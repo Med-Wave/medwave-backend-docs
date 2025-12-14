@@ -1,6 +1,6 @@
 # MedWave Backend Documentation
 
-This public repository automatically publishes API documentation (OpenAPI/Swagger) from the private [medwave-backend-rust](https://github.com/Med-Wave/medwave-backend-rust) repository to GitHub Pages.
+This public repository publishes API documentation (OpenAPI/Swagger) from the private [medwave-backend-rust](https://github.com/Med-Wave/medwave-backend-rust) repository to GitHub Pages.
 
 ## 🌐 Live Documentation
 
@@ -8,55 +8,50 @@ The API documentation is available at: [https://med-wave.github.io/medwave-backe
 
 ## 🔄 How It Works
 
-This repository uses GitHub Actions workflows to:
-
-1. **Fetch Swagger Documentation**: The `fetch-swagger.yml` workflow pulls the OpenAPI specification from the private repository without exposing any source code
-2. **Deploy to GitHub Pages**: The `deploy-pages.yml` workflow publishes the documentation as a static site with Swagger UI
+1. The private repository's CI/CD pipeline pushes the OpenAPI specification directly to this repository's `main` branch
+2. When changes are pushed, the `deploy-pages.yml` workflow automatically deploys the documentation to GitHub Pages using Swagger UI
 
 ## 🔧 Setup Instructions
 
 ### Prerequisites
 
-1. **GitHub Token**: Create a Personal Access Token (PAT) with `repo` scope to access the private repository
+1. **GitHub Token for Private Repo**: Create a Personal Access Token (PAT) with `repo` scope to allow the private repository to push to this repository
    - Go to GitHub Settings → Developer settings → Personal access tokens → Tokens (classic)
    - Generate new token with `repo` scope
-   - Add it as a repository secret named `PRIVATE_REPO_TOKEN`
+   - Add it as a repository secret named `DOCS_REPO_TOKEN` in the **private repository**
 
 2. **GitHub Pages**: Enable GitHub Pages for this repository
    - Go to Repository Settings → Pages
    - Source: GitHub Actions
 
-### Configuration
+### Configuration in Private Repository
 
-The workflow automatically searches for the OpenAPI file in these locations within the private repo:
-- `openapi.json`
-- `swagger.json`
-- `docs/openapi.json`
-- `docs/swagger.json`
-
-If your OpenAPI file is in a different location, update the `fetch-swagger.yml` workflow.
-
-## 🚀 Triggering Updates
-
-The documentation can be updated in three ways:
-
-1. **Manual Trigger**: Run the "Fetch Swagger from Private Repo" workflow manually from the Actions tab
-2. **Scheduled**: Automatically runs daily at midnight UTC
-3. **Repository Dispatch**: Trigger from the private repository when the API changes
-
-### Triggering from Private Repo
-
-Add this to your private repository's CI/CD workflow:
+Add the following step to your private repository's CI/CD workflow to push the OpenAPI specification to this repository:
 
 ```yaml
-- name: Trigger docs update
+- name: Push Swagger to docs repository
   run: |
-    curl -X POST \
-      -H "Accept: application/vnd.github.v3+json" \
-      -H "Authorization: token ${{ secrets.DOCS_REPO_TOKEN }}" \
-      https://api.github.com/repos/Med-Wave/medwave-backend-docs/dispatches \
-      -d '{"event_type":"swagger-updated"}'
+    git config --global user.name "github-actions[bot]"
+    git config --global user.email "github-actions[bot]@users.noreply.github.com"
+    
+    # Clone the docs repository
+    git clone https://x-access-token:${{ secrets.DOCS_REPO_TOKEN }}@github.com/Med-Wave/medwave-backend-docs.git docs-repo
+    cd docs-repo
+    
+    # Copy the OpenAPI file (adjust the source path as needed)
+    cp ../openapi.json ./openapi.json
+    
+    # Commit and push if there are changes
+    git add openapi.json
+    if git diff --staged --quiet; then
+      echo "No changes to OpenAPI file"
+    else
+      git commit -m "Update OpenAPI documentation [skip ci]"
+      git push origin main
+    fi
 ```
+
+**Note**: Adjust the source path (`../openapi.json`) based on where your OpenAPI file is located in the private repository.
 
 ## 📁 Repository Structure
 
@@ -64,18 +59,17 @@ Add this to your private repository's CI/CD workflow:
 .
 ├── .github/
 │   └── workflows/
-│       ├── fetch-swagger.yml    # Fetches OpenAPI spec from private repo
 │       └── deploy-pages.yml     # Deploys to GitHub Pages
 ├── index.html                   # Swagger UI frontend
-├── openapi.json                 # API specification (auto-updated)
+├── openapi.json                 # API specification (pushed from private repo)
 ├── LICENSE
 └── README.md
 ```
 
 ## 🔒 Security
 
-- **No Source Code Exposure**: Only the OpenAPI specification file is copied, not the source code
-- **Token Security**: The private repository access token is stored as a GitHub secret
+- **No Source Code Exposure**: Only the OpenAPI specification file is pushed from the private repository
+- **Token Security**: The access token is stored as a GitHub secret in the private repository
 - **Public Access**: The published documentation is publicly accessible via GitHub Pages
 
 ## 📝 License
