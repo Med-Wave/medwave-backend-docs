@@ -1,0 +1,14 @@
+# Private repo checkout (temporary)
+private-repo/
+
+# Temporary files
+*.tmp
+*.temp
+.DS_Store
+
+# IDE files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~

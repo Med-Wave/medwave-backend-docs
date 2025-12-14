@@ -1,0 +1,10 @@
+{
+  "openapi": "3.0.0",
+  "info": {
+    "title": "MedWave API",
+    "description": "API documentation will be automatically updated from the private repository",
+    "version": "1.0.0"
+  },
+  "paths": {},
+  "components": {}
+}

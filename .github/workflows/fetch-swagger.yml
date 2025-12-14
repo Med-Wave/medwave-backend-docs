@@ -1,0 +1,84 @@
+name: Fetch Swagger from Private Repo
+
+on:
+  workflow_dispatch:  # Manual trigger
+  schedule:
+    - cron: '0 0 * * *'  # Run daily at midnight UTC
+  repository_dispatch:
+    types: [swagger-updated]  # Can be triggered from private repo
+
+permissions:
+  contents: write
+
+jobs:
+  fetch-and-publish:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout public repo
+        uses: actions/checkout@v4
+        with:
+          ref: main
+
+      - name: Checkout private repo
+        uses: actions/checkout@v4
+        with:
+          repository: Med-Wave/medwave-backend-rust
+          token: ${{ secrets.PRIVATE_REPO_TOKEN }}
+          path: private-repo
+
+      - name: Extract Swagger/OpenAPI file
+        run: |
+          # Look for openapi.json or swagger.json in the private repo
+          if [ -f "private-repo/openapi.json" ]; then
+            cp private-repo/openapi.json ./openapi.json
+            echo "Found openapi.json"
+          elif [ -f "private-repo/swagger.json" ]; then
+            cp private-repo/swagger.json ./openapi.json
+            echo "Found swagger.json, copying as openapi.json"
+          elif [ -f "private-repo/docs/openapi.json" ]; then
+            cp private-repo/docs/openapi.json ./openapi.json
+            echo "Found openapi.json in docs folder"
+          elif [ -f "private-repo/docs/swagger.json" ]; then
+            cp private-repo/docs/swagger.json ./openapi.json
+            echo "Found swagger.json in docs folder"
+          else
+            echo "Error: No OpenAPI/Swagger file found"
+            echo "Searched locations:"
+            echo "  - openapi.json"
+            echo "  - swagger.json"
+            echo "  - docs/openapi.json"
+            echo "  - docs/swagger.json"
+            echo ""
+            echo "Repository structure:"
+            ls -la private-repo/
+            exit 1
+          fi
+
+      - name: Remove private repo checkout
+        run: rm -rf private-repo
+
+      - name: Configure Git
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+      - name: Commit and push OpenAPI file
+        run: |
+          git add openapi.json
+          if git diff --staged --quiet; then
+            echo "No changes to OpenAPI file"
+          else
+            git commit -m "Update OpenAPI documentation"
+            git push
+          fi
+
+      - name: Trigger Pages deployment
+        uses: actions/github-script@v7
+        with:
+          script: |
+            await github.rest.actions.createWorkflowDispatch({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              workflow_id: 'deploy-pages.yml',
+              ref: 'main'
+            });
