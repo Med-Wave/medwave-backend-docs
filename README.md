@@ -31,11 +31,13 @@ Add the following step to your private repository's CI/CD workflow to push the O
 ```yaml
 - name: Push Swagger to docs repository
   run: |
+    # Configure git with token authentication
     git config --global user.name "github-actions[bot]"
     git config --global user.email "github-actions[bot]@users.noreply.github.com"
+    git config --global url."https://x-access-token:${{ secrets.DOCS_REPO_TOKEN }}@github.com/".insteadOf "https://github.com/"
     
     # Clone the docs repository
-    git clone https://x-access-token:${{ secrets.DOCS_REPO_TOKEN }}@github.com/Med-Wave/medwave-backend-docs.git docs-repo
+    git clone https://github.com/Med-Wave/medwave-backend-docs.git docs-repo
     cd docs-repo
     
     # Copy the OpenAPI file (adjust the source path as needed)
@@ -47,7 +49,7 @@ Add the following step to your private repository's CI/CD workflow to push the O
       echo "No changes to OpenAPI file"
     else
       git commit -m "Update OpenAPI documentation [skip ci]"
-      git push origin main
+      git push origin main || { echo "Failed to push changes"; exit 1; }
     fi
 ```
 
