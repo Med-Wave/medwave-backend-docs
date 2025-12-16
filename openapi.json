@@ -14,12 +14,19 @@
         "tags": [
           "authentication"
         ],
+        "summary": "User login endpoint (OAuth2 Password Flow)",
+        "description": "Authenticates a user with email and password credentials.\nReturns an access token for API authorization and sets a refresh token in an HTTP-only cookie.\n\nThe access token should be included in subsequent API requests using the Authorization header:\n`Authorization: Bearer {access_token}`\n\nThe refresh token is automatically stored in a secure HTTP-only cookie and can be used\nwith the `/auth/refresh` endpoint to obtain new access tokens without re-entering credentials.",
         "operationId": "oauth2_token",
         "requestBody": {
+          "description": "User credentials for authentication. Email must be valid and password must be between 3-20 characters.",
           "content": {
             "application/x-www-form-urlencoded": {
               "schema": {
                 "$ref": "#/components/schemas/UserLoginRequest"
+              },
+              "example": {
+                "email": "user@example.com",
+                "password": "myPassword123"
               }
             }
           },
@@ -27,31 +34,44 @@
         },
         "responses": {
           "200": {
-            "description": "Access token granted",
+            "description": "Authentication successful - access token granted and refresh token set in cookie",
             "content": {
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/OAuth2TokenResponse"
+                },
+                "example": {
+                  "access_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
+                  "expires_in": 3600,
+                  "token_type": "Bearer"
                 }
               }
             }
           },
           "400": {
-            "description": "Invalid request",
+            "description": "Invalid request - validation failed (e.g., invalid email format)",
             "content": {
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/JsonErrorResponse"
+                },
+                "example": {
+                  "message": "Email is not valid",
+                  "status": 400
                 }
               }
             }
           },
           "401": {
-            "description": "Invalid credentials",
+            "description": "Authentication failed - invalid email or password",
             "content": {
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/JsonErrorResponse"
+                },
+                "example": {
+                  "message": "Invalid credentials",
+                  "status": 401
                 }
               }
             }
@@ -65,18 +85,22 @@
           "authentication"
         ],
         "summary": "User logout endpoint",
-        "description": "Invalidates the refresh token by clearing the HTTP-only cookie.",
+        "description": "Logs out the user by invalidating and clearing the refresh token cookie.\nAfter logout, the refresh token can no longer be used to obtain new access tokens.\n\n**Note:** The access token remains valid until it expires naturally. To immediately\nrevoke access, the client should delete the stored access token on their side.\n\nThis endpoint does not require an Authorization header but requires a valid\nrefresh_token cookie to be present.",
         "operationId": "logout",
         "responses": {
           "200": {
-            "description": "Logout successful"
+            "description": "Logout successful - refresh token cookie cleared"
           },
           "400": {
-            "description": "No refresh token cookie found",
+            "description": "No refresh token found - user may already be logged out",
             "content": {
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/JsonErrorResponse"
+                },
+                "example": {
+                  "message": "Invalid refresh token",
+                  "status": 400
                 }
               }
             }
@@ -90,35 +114,48 @@
           "authentication"
         ],
         "summary": "Refresh token endpoint",
-        "description": "Validates a refresh token from HTTP-only cookie and issues a new access token and refresh token pair.",
+        "description": "Obtains a new access token using the refresh token stored in HTTP-only cookie.\nThis allows users to remain authenticated without re-entering credentials when\ntheir access token expires.\n\nThe refresh token is automatically read from the `refresh_token` HTTP-only cookie\nset during login or registration. A new access token and refresh token pair are issued.\n\n**Note:** This endpoint does not require an Authorization header since it uses\nthe refresh token from the cookie instead.",
         "operationId": "refresh_token",
         "responses": {
           "200": {
-            "description": "Tokens refreshed successfully",
+            "description": "Tokens refreshed successfully - new access token issued",
             "content": {
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/OAuth2TokenResponse"
+                },
+                "example": {
+                  "access_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
+                  "expires_in": 3600,
+                  "token_type": "Bearer"
                 }
               }
             }
           },
           "400": {
-            "description": "Invalid or missing refresh token",
+            "description": "Missing refresh token - no refresh_token cookie found",
             "content": {
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/JsonErrorResponse"
+                },
+                "example": {
+                  "message": "Invalid refresh token",
+                  "status": 400
                 }
               }
             }
           },
           "401": {
-            "description": "Invalid refresh token",
+            "description": "Invalid or expired refresh token",
             "content": {
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/JsonErrorResponse"
+                },
+                "example": {
+                  "message": "Invalid refresh token",
+                  "status": 401
                 }
               }
             }
@@ -132,13 +169,21 @@
           "authentication"
         ],
         "summary": "User registration endpoint",
-        "description": "Registers a new user with email, first name, last name, password and password confirmation.",
+        "description": "Creates a new user account with the provided information.\nUpon successful registration, the user is automatically authenticated and receives\nan access token and refresh token (in HTTP-only cookie), eliminating the need\nfor a separate login request.\n\n**Validation Requirements:**\n- Email: Must be valid format and not already registered\n- First name: 2-50 characters\n- Last name: 2-50 characters\n- Password: 8-100 characters for security\n- Password confirmation: Must match password field",
         "operationId": "register",
         "requestBody": {
+          "description": "New user registration information with password confirmation",
           "content": {
             "application/json": {
               "schema": {
                 "$ref": "#/components/schemas/UserRegisterRequest"
+              },
+              "example": {
+                "email": "newuser@example.com",
+                "first_name": "John",
+                "last_name": "Doe",
+                "password": "SecurePassword123!",
+                "password_confirmation": "SecurePassword123!"
               }
             }
           },
@@ -146,31 +191,44 @@
         },
         "responses": {
           "201": {
-            "description": "Registration successful",
+            "description": "Registration successful - user created and authenticated",
             "content": {
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/OAuth2TokenResponse"
+                },
+                "example": {
+                  "access_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
+                  "expires_in": 3600,
+                  "token_type": "Bearer"
                 }
               }
             }
           },
           "400": {
-            "description": "Password mismatch",
+            "description": "Validation failed - password mismatch or invalid input",
             "content": {
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/JsonErrorResponse"
+                },
+                "example": {
+                  "message": "Password confirmation does not match",
+                  "status": 400
                 }
               }
             }
           },
           "409": {
-            "description": "User already exists",
+            "description": "User already exists - email is already registered",
             "content": {
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/JsonErrorResponse"
+                },
+                "example": {
+                  "message": "User with this email already exists",
+                  "status": 409
                 }
               }
             }
@@ -235,12 +293,20 @@
         "tags": [
           "section"
         ],
+        "summary": "Create a new section",
+        "description": "Creates a custom section definition that can be added to interview sessions.\nSections define different parts of a medical interview (e.g., Chief Complaint,\nHistory of Present Illness, Physical Examination).\n\n**Section Types:**\n- `history_taking`: For collecting patient history, symptoms, and background information\n- `physical_examination`: For documenting physical examination findings\n\nOnce created, sections can be:\n- Added to existing sessions\n- Included in custom templates\n- Reused across multiple interviews",
         "operationId": "handle_create_section",
         "requestBody": {
+          "description": "Section definition with name, description, and type",
           "content": {
             "application/json": {
               "schema": {
                 "$ref": "#/components/schemas/SectionCreateRequest"
+              },
+              "example": {
+                "description": "Document the patient's primary reason for visit",
+                "name": "Chief Complaint",
+                "section_type": "history_taking"
               }
             }
           },
@@ -253,22 +319,29 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/SectionCreateResponse"
+                },
+                "example": {
+                  "section_uuid": "750e8400-e29b-41d4-a716-446655440002"
                 }
               }
             }
           },
           "400": {
-            "description": "Invalid request",
+            "description": "Validation failed - invalid name length or description",
             "content": {
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/JsonErrorResponse"
+                },
+                "example": {
+                  "message": "Name must be between 1 and 255 characters",
+                  "status": 400
                 }
               }
             }
           },
           "401": {
-            "description": "Unauthorized",
+            "description": "Unauthorized - invalid or missing JWT token",
             "content": {
               "application/json": {
                 "schema": {
@@ -290,12 +363,18 @@
         "tags": [
           "session"
         ],
+        "summary": "Create a new interview session",
+        "description": "Creates a new medical interview session based on a predefined template.\nThe template determines which sections (e.g., History Taking, Physical Examination)\nwill be included in the session.\n\nAfter creation, the session can be populated with data through:\n- Audio transcription endpoints\n- Manual section updates\n- WebSocket real-time transcription",
         "operationId": "handle_create_session",
         "requestBody": {
+          "description": "Template UUID to base the new session on",
           "content": {
             "application/json": {
               "schema": {
                 "$ref": "#/components/schemas/SessionCreateRequest"
+              },
+              "example": {
+                "template_uuid": "850e8400-e29b-41d4-a716-446655440003"
               }
             }
           },
@@ -303,17 +382,44 @@
         },
         "responses": {
           "201": {
-            "description": "Session created successfully",
+            "description": "Session created successfully with sections from template",
             "content": {
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/SessionCreateResponse"
+                },
+                "example": {
+                  "session_uuid": "650e8400-e29b-41d4-a716-446655440001"
                 }
               }
             }
           },
           "400": {
-            "description": "Invalid request",
+            "description": "Invalid request - template UUID not provided or invalid",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/JsonErrorResponse"
+                },
+                "example": {
+                  "message": "Invalid template UUID",
+                  "status": 400
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized - invalid or missing JWT token",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/JsonErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Template not found",
             "content": {
               "application/json": {
                 "schema": {
@@ -335,20 +441,35 @@
         "tags": [
           "session"
         ],
+        "summary": "Get user's sessions",
+        "description": "Retrieves a list of all sessions belonging to the authenticated user.\nEach session includes summary information (title, duration, timestamps)\nbut not detailed section data. Use the GET /sessions/{session_uuid}\nendpoint to retrieve full details for a specific session.\n\nSessions are returned in order of creation (most recent first).",
         "operationId": "handle_get_user_sessions",
         "responses": {
           "200": {
-            "description": "Sessions retrieved successfully",
+            "description": "User's sessions retrieved successfully",
             "content": {
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/SessionListResponse"
+                },
+                "example": {
+                  "sessions": [
+                    {
+                      "created_at": "2024-01-15T10:30:00Z",
+                      "document": "Brief summary...",
+                      "duration": 1800,
+                      "title": "Patient Interview - January 15, 2024",
+                      "updated_at": "2024-01-15T11:00:00Z",
+                      "user_uuid": "550e8400-e29b-41d4-a716-446655440000",
+                      "uuid": "650e8400-e29b-41d4-a716-446655440001"
+                    }
+                  ]
                 }
               }
             }
           },
           "401": {
-            "description": "Unauthorized",
+            "description": "Unauthorized - invalid or missing JWT token",
             "content": {
               "application/json": {
                 "schema": {
@@ -370,22 +491,25 @@
         "tags": [
           "session"
         ],
+        "summary": "Get session details",
+        "description": "Retrieves complete information about a specific session including:\n- Session metadata (title, transcription, duration, timestamps)\n- All associated sections with their details\n- Bullet points extracted for each section\n- Section completion status\n\nThis provides a comprehensive view of the entire interview session.",
         "operationId": "handle_get_session",
         "parameters": [
           {
             "name": "session_uuid",
             "in": "path",
-            "description": "Session UUID",
+            "description": "Unique identifier of the session to retrieve",
             "required": true,
             "schema": {
               "type": "string",
               "format": "uuid"
-            }
+            },
+            "example": "650e8400-e29b-41d4-a716-446655440001"
           }
         ],
         "responses": {
           "200": {
-            "description": "Session retrieved successfully",
+            "description": "Session retrieved successfully with all sections and details",
             "content": {
               "application/json": {
                 "schema": {
@@ -395,7 +519,7 @@
             }
           },
           "401": {
-            "description": "Unauthorized",
+            "description": "Unauthorized - invalid or missing JWT token",
             "content": {
               "application/json": {
                 "schema": {
@@ -405,11 +529,15 @@
             }
           },
           "404": {
-            "description": "Session not found",
+            "description": "Session not found - no session exists with the provided UUID",
             "content": {
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/JsonErrorResponse"
+                },
+                "example": {
+                  "message": "Session not found",
+                  "status": 404
                 }
               }
             }
@@ -425,6 +553,8 @@
         "tags": [
           "session"
         ],
+        "summary": "Update session metadata",
+        "description": "Update metadata fields for the session.",
         "operationId": "handle_update_session_by_uuid",
         "parameters": [
           {
@@ -492,6 +622,8 @@
         "tags": [
           "session"
         ],
+        "summary": "Extend the session transcription with audio",
+        "description": "Append new transcription to the session from the uploaded audio.",
         "operationId": "handle_extend_session_with_audio",
         "parameters": [
           {
@@ -570,17 +702,20 @@
         "tags": [
           "session"
         ],
+        "summary": "Generate medical note",
+        "description": "Generates a structured medical note document from the session transcription\nusing AI. The note is formatted according to standard medical documentation\npractices and includes sections such as:\n- Chief Complaint\n- History of Present Illness\n- Physical Examination\n- Assessment and Plan\n\nThis is typically used after completing the interview to create a formal\nmedical record document.",
         "operationId": "handle_generate_medical_note",
         "parameters": [
           {
             "name": "session_uuid",
             "in": "path",
-            "description": "Session UUID",
+            "description": "UUID of the session to generate medical note for",
             "required": true,
             "schema": {
               "type": "string",
               "format": "uuid"
-            }
+            },
+            "example": "650e8400-e29b-41d4-a716-446655440001"
           }
         ],
         "responses": {
@@ -590,12 +725,15 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/MedicalNoteResponse"
+                },
+                "example": {
+                  "note": "Chief Complaint: Patient presents with headache for 3 days\n\nHistory of Present Illness: 45-year-old patient reports..."
                 }
               }
             }
           },
           "401": {
-            "description": "Unauthorized",
+            "description": "Unauthorized - invalid or missing JWT token",
             "content": {
               "application/json": {
                 "schema": {
@@ -610,6 +748,10 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/JsonErrorResponse"
+                },
+                "example": {
+                  "message": "Session not found",
+                  "status": 404
                 }
               }
             }
@@ -627,6 +769,8 @@
         "tags": [
           "session"
         ],
+        "summary": "Override the session transcription with audio",
+        "description": "Replace the session transcription with the uploaded audio recording.",
         "operationId": "handle_override_session_with_audio",
         "parameters": [
           {
@@ -705,6 +849,8 @@
         "tags": [
           "session"
         ],
+        "summary": "Add a section to a session",
+        "description": "Attach an existing section definition to the session, preventing duplicates.",
         "operationId": "handle_add_section_to_session",
         "parameters": [
           {
@@ -780,6 +926,8 @@
         "tags": [
           "session"
         ],
+        "summary": "Remove a section from a session",
+        "description": "Remove the requested section from the session.",
         "operationId": "handle_delete_session_section_by_uuid",
         "parameters": [
           {
@@ -838,6 +986,8 @@
         "tags": [
           "session"
         ],
+        "summary": "Update a section manually",
+        "description": "Update the section content manually via JSON.",
         "operationId": "handle_update_session_section_by_uuid",
         "parameters": [
           {
@@ -915,31 +1065,35 @@
         "tags": [
           "session"
         ],
+        "summary": "Update section with audio",
+        "description": "Transcribe the provided audio and update the section with the extracted bullet points.",
         "operationId": "handle_update_session_section_with_audio_by_uuid",
         "parameters": [
           {
             "name": "session_uuid",
             "in": "path",
-            "description": "Session UUID",
+            "description": "UUID of the session containing the section",
             "required": true,
             "schema": {
               "type": "string",
               "format": "uuid"
-            }
+            },
+            "example": "650e8400-e29b-41d4-a716-446655440001"
           },
           {
             "name": "section_uuid",
             "in": "path",
-            "description": "Section UUID",
+            "description": "UUID of the section to update with audio",
             "required": true,
             "schema": {
               "type": "string",
               "format": "uuid"
-            }
+            },
+            "example": "750e8400-e29b-41d4-a716-446655440002"
           }
         ],
         "requestBody": {
-          "description": "Audio file to transcribe and update section with",
+          "description": "Audio file in multipart form. Field name must be 'audio_blob'. Supported formats: WAV, MP3, OGG, WebM, FLAC",
           "content": {
             "multipart/form-data": {
               "schema": {
@@ -951,27 +1105,34 @@
         },
         "responses": {
           "200": {
-            "description": "Section updated successfully with audio transcription",
+            "description": "Section updated successfully with transcribed and analyzed audio content",
             "content": {
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/SessionSectionUpdateResponse"
+                },
+                "example": {
+                  "message": "Section updated with transcribed audio"
                 }
               }
             }
           },
           "400": {
-            "description": "Invalid request or audio format",
+            "description": "Invalid request - missing audio data or unsupported audio format",
             "content": {
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/JsonErrorResponse"
+                },
+                "example": {
+                  "message": "No audio data provided",
+                  "status": 400
                 }
               }
             }
           },
           "401": {
-            "description": "Unauthorized",
+            "description": "Unauthorized - invalid or missing JWT token",
             "content": {
               "application/json": {
                 "schema": {
@@ -981,11 +1142,15 @@
             }
           },
           "404": {
-            "description": "Session section not found",
+            "description": "Session or section not found",
             "content": {
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/JsonErrorResponse"
+                },
+                "example": {
+                  "message": "Session section not found",
+                  "status": 404
                 }
               }
             }
@@ -1003,22 +1168,25 @@
         "tags": [
           "session"
         ],
+        "summary": "Summarize session",
+        "description": "Analyzes the complete session transcription and generates structured summaries\nfor all sections. This uses AI to extract key information and organize it into\nbullet points for each section type (History Taking, Physical Examination, etc.).\n\n**Use this endpoint to:**\n- Process a complete interview transcription\n- Generate organized bullet points for all sections\n- Prepare the session for medical note generation\n\nThis is typically called after completing an interview session to structure\nthe collected information.",
         "operationId": "handle_summarize_session",
         "parameters": [
           {
             "name": "session_uuid",
             "in": "path",
-            "description": "Session UUID",
+            "description": "UUID of the session to summarize",
             "required": true,
             "schema": {
               "type": "string",
               "format": "uuid"
-            }
+            },
+            "example": "650e8400-e29b-41d4-a716-446655440001"
           }
         ],
         "responses": {
           "200": {
-            "description": "Session summarized successfully",
+            "description": "Session analyzed and summarized successfully - all sections updated with bullet points",
             "content": {
               "application/json": {
                 "schema": {
@@ -1028,7 +1196,7 @@
             }
           },
           "401": {
-            "description": "Unauthorized",
+            "description": "Unauthorized - invalid or missing JWT token",
             "content": {
               "application/json": {
                 "schema": {
@@ -1043,6 +1211,10 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/JsonErrorResponse"
+                },
+                "example": {
+                  "message": "Session not found",
+                  "status": 404
                 }
               }
             }
@@ -1060,7 +1232,22 @@
         "tags": [
           "speech2text"
         ],
+        "summary": "Start a speech-to-text session",
+        "description": "Open a secure WebSocket to stream microphone audio for the session and receive real-time transcripts and summaries.",
         "operationId": "handle_microphone_stream",
+        "parameters": [
+          {
+            "name": "session_uuid",
+            "in": "query",
+            "description": "UUID of the session to attach the transcription stream to",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "example": "650e8400-e29b-41d4-a716-446655440001"
+          }
+        ],
         "responses": {
           "101": {
             "description": "WebSocket connection established"
@@ -1078,20 +1265,50 @@
         "tags": [
           "template"
         ],
+        "summary": "Get all global templates",
+        "description": "Retrieves a list of all globally available session templates.\nTemplates define predefined sets of sections for creating structured\ninterview sessions.\n\nGlobal templates are created by superusers and are available to all users.\nEach template specifies which sections should be included when creating\na new session (e.g., \"Standard Medical Interview\" might include History Taking,\nPhysical Examination, and Assessment sections).\n\nUse the returned template UUIDs when creating new sessions via POST /sessions.",
         "operationId": "handle_get_all_global_templates",
         "responses": {
           "200": {
-            "description": "Templates retrieved successfully",
+            "description": "Global templates retrieved successfully",
             "content": {
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/TemplateListResponse"
+                },
+                "example": {
+                  "templates": [
+                    {
+                      "created_at": "2024-01-01T00:00:00Z",
+                      "template_name": "Standard Medical Interview",
+                      "updated_at": "2024-01-01T00:00:00Z",
+                      "user_uuid": "550e8400-e29b-41d4-a716-446655440000",
+                      "uuid": "850e8400-e29b-41d4-a716-446655440003"
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized - invalid or missing JWT token",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/JsonErrorResponse"
                 }
               }
             }
           },
           "500": {
-            "description": "Internal server error"
+            "description": "Internal server error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/JsonErrorResponse"
+                }
+              }
+            }
           }
         },
         "security": [
@@ -1106,26 +1323,39 @@
         "tags": [
           "user"
         ],
-        "summary": "Get current user information",
-        "description": "Returns the current authenticated user's information including uuid,\nfirst_name, last_name, email, user_role, created_at, and updated_at.",
+        "summary": "Get current user profile",
+        "description": "Retrieves the complete profile information for the currently authenticated user.\nThis endpoint requires a valid JWT access token in the Authorization header.\n\n**Returns:**\n- User UUID (unique identifier)\n- First and last name\n- Email address\n- User role (user, admin, or superuser)\n- Account creation and last update timestamps",
         "operationId": "get_me",
         "responses": {
           "200": {
-            "description": "User information retrieved successfully",
+            "description": "User profile retrieved successfully",
             "content": {
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/UserResponse"
+                },
+                "example": {
+                  "created_at": "2024-01-15T10:30:00Z",
+                  "email": "user@example.com",
+                  "first_name": "John",
+                  "last_name": "Doe",
+                  "updated_at": "2024-01-20T14:45:00Z",
+                  "user_role": "user",
+                  "uuid": "550e8400-e29b-41d4-a716-446655440000"
                 }
               }
             }
           },
           "401": {
-            "description": "Unauthorized - invalid or missing token",
+            "description": "Unauthorized - invalid, expired, or missing JWT token",
             "content": {
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/JsonErrorResponse"
+                },
+                "example": {
+                  "message": "Unauthorized",
+                  "status": 401
                 }
               }
             }
@@ -1141,14 +1371,20 @@
         "tags": [
           "user"
         ],
-        "summary": "Update current user information",
-        "description": "Allows authenticated users to update their profile information including\nfirst_name, last_name, and email. Only the fields provided in the request\nwill be updated.",
+        "summary": "Update current user profile",
+        "description": "Updates the authenticated user's profile information. All fields are optional -\nonly the fields provided in the request body will be updated.\n\n**Updatable Fields:**\n- Email: Must be valid format and not registered by another user\n- First name: 2-50 characters\n- Last name: 2-50 characters\n\n**Note:** Password updates are not supported through this endpoint.\nAt least one field should be provided for a meaningful update.",
         "operationId": "patch_me",
         "requestBody": {
+          "description": "Updated user profile fields (all optional)",
           "content": {
             "application/json": {
               "schema": {
                 "$ref": "#/components/schemas/UserUpdateRequest"
+              },
+              "example": {
+                "email": "newemail@example.com",
+                "first_name": "Jane",
+                "last_name": "Smith"
               }
             }
           },
@@ -1156,41 +1392,62 @@
         },
         "responses": {
           "200": {
-            "description": "User information updated successfully",
+            "description": "User profile updated successfully",
             "content": {
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/UserResponse"
+                },
+                "example": {
+                  "created_at": "2024-01-15T10:30:00Z",
+                  "email": "newemail@example.com",
+                  "first_name": "Jane",
+                  "last_name": "Smith",
+                  "updated_at": "2024-01-20T15:00:00Z",
+                  "user_role": "user",
+                  "uuid": "550e8400-e29b-41d4-a716-446655440000"
                 }
               }
             }
           },
           "400": {
-            "description": "Invalid input data",
+            "description": "Validation failed - invalid email format or field length",
             "content": {
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/JsonErrorResponse"
+                },
+                "example": {
+                  "message": "Email is not valid",
+                  "status": 400
                 }
               }
             }
           },
           "401": {
-            "description": "Unauthorized - invalid or missing token",
+            "description": "Unauthorized - invalid, expired, or missing JWT token",
             "content": {
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/JsonErrorResponse"
+                },
+                "example": {
+                  "message": "Unauthorized",
+                  "status": 401
                 }
               }
             }
           },
           "409": {
-            "description": "Email already exists",
+            "description": "Email conflict - email is already registered by another user",
             "content": {
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/JsonErrorResponse"
+                },
+                "example": {
+                  "message": "Email already exists",
+                  "status": 409
                 }
               }
             }
@@ -1267,6 +1524,7 @@
       },
       "HealthInfo": {
         "type": "object",
+        "description": "Detailed health check information\n\nProvides comprehensive system health status including version and timestamp.\nOnly available to authenticated users.",
         "required": [
           "status",
           "timestamp",
@@ -1275,27 +1533,38 @@
         ],
         "properties": {
           "service": {
-            "type": "string"
+            "type": "string",
+            "description": "Service name identifier",
+            "example": "medwave-backend"
           },
           "status": {
-            "type": "string"
+            "type": "string",
+            "description": "Current health status of the service",
+            "example": "healthy"
           },
           "timestamp": {
-            "type": "string"
+            "type": "string",
+            "description": "Current timestamp in RFC 3339 format",
+            "example": "2024-01-15T10:30:00Z"
           },
           "version": {
-            "type": "string"
+            "type": "string",
+            "description": "Service version identifier",
+            "example": "1.0.0"
           }
         }
       },
       "HealthResponse": {
         "type": "object",
+        "description": "Basic health check response\n\nSimple response confirming the service is running and responsive.",
         "required": [
           "message"
         ],
         "properties": {
           "message": {
-            "type": "string"
+            "type": "string",
+            "description": "Health check message",
+            "example": "Hello World!"
           }
         }
       },
@@ -1322,12 +1591,15 @@
       },
       "MedicalNoteResponse": {
         "type": "object",
+        "description": "Response containing generated medical note\n\nThe medical note is an AI-generated document based on the session transcription.",
         "required": [
           "note"
         ],
         "properties": {
           "note": {
-            "type": "string"
+            "type": "string",
+            "description": "Generated medical note document in text format",
+            "example": "Chief Complaint: Patient presents with...\n\nHistory of Present Illness: ..."
           }
         }
       },
@@ -1365,17 +1637,21 @@
       },
       "OAuth2RefreshRequest": {
         "type": "object",
+        "description": "Request body for OAuth2 token refresh (deprecated - use cookie-based refresh)\n\nNote: The current implementation uses HTTP-only cookies for refresh tokens.\nThis struct is kept for backwards compatibility but is not actively used.",
         "required": [
           "refresh_token"
         ],
         "properties": {
           "refresh_token": {
-            "type": "string"
+            "type": "string",
+            "description": "Refresh token for obtaining a new access token",
+            "example": "refresh_token_value_here"
           }
         }
       },
       "OAuth2TokenResponse": {
         "type": "object",
+        "description": "OAuth2 token response following RFC 6749\n\nReturned after successful authentication or token refresh.\nThe access token should be used in the Authorization header as \"Bearer {access_token}\".\nThe refresh token is automatically stored in an HTTP-only cookie.",
         "required": [
           "access_token",
           "token_type",
@@ -1383,15 +1659,20 @@
         ],
         "properties": {
           "access_token": {
-            "type": "string"
+            "type": "string",
+            "description": "JWT access token for API authorization\n\nUse this token in the Authorization header: \"Bearer {access_token}\"",
+            "example": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiaWF0IjoxNTE2MjM5MDIyfQ.SflKxwRJSMeKKF2QT4fwpMeJf36POk6yJV_adQssw5c"
           },
           "expires_in": {
             "type": "integer",
             "format": "int64",
+            "description": "Time in seconds until the access token expires\n\nAfter this period, use the refresh token endpoint to obtain a new access token.",
+            "example": 3600,
             "minimum": 0
           },
           "token_type": {
-            "$ref": "#/components/schemas/TokenTypeModel"
+            "$ref": "#/components/schemas/TokenTypeModel",
+            "description": "Token type (always \"Bearer\" for access tokens)"
           }
         }
       },
@@ -1490,6 +1771,7 @@
       },
       "Section": {
         "type": "object",
+        "description": "Section definition\n\nDefines a reusable section template that can be added to sessions.",
         "required": [
           "uuid",
           "title",
@@ -1500,38 +1782,51 @@
         "properties": {
           "created_at": {
             "type": "string",
-            "format": "date"
+            "format": "date",
+            "description": "Timestamp when the section was created (RFC 3339 format)"
           },
           "description": {
-            "type": "string"
+            "type": "string",
+            "description": "Description of what information should be collected in this section",
+            "example": "Document the patient's primary reason for visit"
           },
           "is_blocked": {
             "type": [
               "boolean",
               "null"
-            ]
+            ],
+            "description": "Whether this section is locked from editing",
+            "example": false
           },
           "section_type": {
-            "$ref": "#/components/schemas/SectionType"
+            "$ref": "#/components/schemas/SectionType",
+            "description": "Type of section (history_taking or physical_examination)"
           },
           "title": {
-            "type": "string"
+            "type": "string",
+            "description": "Name/title of the section",
+            "example": "Chief Complaint"
           },
           "user_uuid": {
             "type": [
               "string",
               "null"
             ],
-            "format": "uuid"
+            "format": "uuid",
+            "description": "UUID of the user who created this section (None for global sections)",
+            "example": "550e8400-e29b-41d4-a716-446655440000"
           },
           "uuid": {
             "type": "string",
-            "format": "uuid"
+            "format": "uuid",
+            "description": "Unique identifier for the section",
+            "example": "750e8400-e29b-41d4-a716-446655440002"
           }
         }
       },
       "SectionCreateRequest": {
         "type": "object",
+        "description": "Request body for creating a new section\n\nCreates a custom section that can be reused across multiple sessions.",
         "required": [
           "name",
           "description",
@@ -1539,41 +1834,52 @@
         ],
         "properties": {
           "description": {
-            "type": "string"
+            "type": "string",
+            "description": "Description of what this section is for\n\nMust be less than 500 characters.",
+            "example": "Document patient allergies and current medications"
           },
           "name": {
-            "type": "string"
+            "type": "string",
+            "description": "Name/title of the section\n\nMust be between 1 and 255 characters.",
+            "example": "Allergies and Medications"
           },
           "section_type": {
-            "$ref": "#/components/schemas/SectionType"
+            "$ref": "#/components/schemas/SectionType",
+            "description": "Type of section being created"
           }
         }
       },
       "SectionCreateResponse": {
         "type": "object",
+        "description": "Response after successfully creating a section",
         "required": [
           "section_uuid"
         ],
         "properties": {
           "section_uuid": {
             "type": "string",
-            "format": "uuid"
+            "format": "uuid",
+            "description": "UUID of the newly created section",
+            "example": "750e8400-e29b-41d4-a716-446655440002"
           }
         }
       },
       "SectionResponse": {
         "type": "object",
+        "description": "Response containing section data",
         "required": [
           "section"
         ],
         "properties": {
           "section": {
-            "$ref": "#/components/schemas/Section"
+            "$ref": "#/components/schemas/Section",
+            "description": "Complete section information"
           }
         }
       },
       "SectionType": {
         "type": "string",
+        "description": "Section type enumeration for medical interview sections\n\nDefines the different types of sections that can be included in an interview session.",
         "enum": [
           "history_taking",
           "physical_examination"
@@ -1581,6 +1887,7 @@
       },
       "Session": {
         "type": "object",
+        "description": "Medical interview session data\n\nRepresents a complete interview session with transcription and metadata.",
         "required": [
           "uuid",
           "user_uuid",
@@ -1594,56 +1901,76 @@
         "properties": {
           "created_at": {
             "type": "string",
-            "format": "date"
+            "format": "date",
+            "description": "Timestamp when the session was created (RFC 3339 format)"
           },
           "document": {
-            "type": "string"
+            "type": "string",
+            "description": "Generated document or summary from the session",
+            "example": "Medical report summary..."
           },
           "duration": {
             "type": "integer",
-            "format": "int32"
+            "format": "int32",
+            "description": "Duration of the session in seconds",
+            "example": 1800
           },
           "title": {
-            "type": "string"
+            "type": "string",
+            "description": "Title or name of the session",
+            "example": "Patient Interview - January 15, 2024"
           },
           "transcription": {
-            "type": "string"
+            "type": "string",
+            "description": "Full transcription of the interview session",
+            "example": "Doctor: Good morning. Patient: Good morning, doctor..."
           },
           "updated_at": {
             "type": "string",
-            "format": "date"
+            "format": "date",
+            "description": "Timestamp when the session was last updated (RFC 3339 format)"
           },
           "user_uuid": {
             "type": "string",
-            "format": "uuid"
+            "format": "uuid",
+            "description": "UUID of the user who owns this session",
+            "example": "550e8400-e29b-41d4-a716-446655440000"
           },
           "uuid": {
             "type": "string",
-            "format": "uuid"
+            "format": "uuid",
+            "description": "Unique identifier for the session",
+            "example": "650e8400-e29b-41d4-a716-446655440001"
           }
         }
       },
       "SessionCreateRequest": {
         "type": "object",
+        "description": "Request body for creating a new interview session\n\nCreates a new session based on a template with predefined sections.",
         "required": [
           "template_uuid"
         ],
         "properties": {
           "template_uuid": {
             "type": "string",
-            "format": "uuid"
+            "format": "uuid",
+            "description": "UUID of the template to use for creating the session\n\nThe template defines which sections will be included in the session.",
+            "example": "550e8400-e29b-41d4-a716-446655440000"
           }
         }
       },
       "SessionCreateResponse": {
         "type": "object",
+        "description": "Response after successfully creating a session",
         "required": [
           "session_uuid"
         ],
         "properties": {
           "session_uuid": {
             "type": "string",
-            "format": "uuid"
+            "format": "uuid",
+            "description": "UUID of the newly created session",
+            "example": "650e8400-e29b-41d4-a716-446655440001"
           }
         }
       },
@@ -1722,17 +2049,20 @@
       },
       "SessionGetResponse": {
         "type": "object",
+        "description": "Response containing complete session data with all sections",
         "required": [
           "session_data"
         ],
         "properties": {
           "session_data": {
-            "$ref": "#/components/schemas/SessionWithSections"
+            "$ref": "#/components/schemas/SessionWithSections",
+            "description": "Complete session data including all associated sections"
           }
         }
       },
       "SessionInfo": {
         "type": "object",
+        "description": "Session summary information\n\nProvides key session metadata without section details, useful for list views.",
         "required": [
           "uuid",
           "user_uuid",
@@ -1745,34 +2075,47 @@
         "properties": {
           "created_at": {
             "type": "string",
-            "format": "date"
+            "format": "date",
+            "description": "Timestamp when created (RFC 3339 format)"
           },
           "document": {
-            "type": "string"
+            "type": "string",
+            "description": "Generated document or summary",
+            "example": "Brief summary of the medical interview..."
           },
           "duration": {
             "type": "integer",
-            "format": "int32"
+            "format": "int32",
+            "description": "Duration of the session in seconds",
+            "example": 1800
           },
           "title": {
-            "type": "string"
+            "type": "string",
+            "description": "Title or name of the session",
+            "example": "Patient Interview - January 15, 2024"
           },
           "updated_at": {
             "type": "string",
-            "format": "date"
+            "format": "date",
+            "description": "Timestamp when last updated (RFC 3339 format)"
           },
           "user_uuid": {
             "type": "string",
-            "format": "uuid"
+            "format": "uuid",
+            "description": "UUID of the user who owns this session",
+            "example": "550e8400-e29b-41d4-a716-446655440000"
           },
           "uuid": {
             "type": "string",
-            "format": "uuid"
+            "format": "uuid",
+            "description": "Unique identifier for the session",
+            "example": "650e8400-e29b-41d4-a716-446655440001"
           }
         }
       },
       "SessionListResponse": {
         "type": "object",
+        "description": "Response containing a list of user's sessions",
         "required": [
           "sessions"
         ],
@@ -1781,12 +2124,14 @@
             "type": "array",
             "items": {
               "$ref": "#/components/schemas/SessionInfo"
-            }
+            },
+            "description": "Array of session information objects"
           }
         }
       },
       "SessionSection": {
         "type": "object",
+        "description": "Session section with associated data\n\nRepresents a specific section within a session (e.g., History Taking, Physical Examination)\nwith collected bullet points from the interview.",
         "required": [
           "section_uuid",
           "session_uuid",
@@ -1799,38 +2144,55 @@
             "type": "array",
             "items": {
               "type": "string"
-            }
+            },
+            "description": "List of bullet points extracted from the interview for this section",
+            "example": [
+              "Chief complaint: headache for 3 days",
+              "Pain level: 7/10",
+              "No previous history of migraines"
+            ]
           },
           "is_blocked": {
-            "type": "boolean"
+            "type": "boolean",
+            "description": "Whether this section is locked from further editing",
+            "example": false
           },
           "section_uuid": {
             "type": "string",
-            "format": "uuid"
+            "format": "uuid",
+            "description": "UUID of the section definition",
+            "example": "750e8400-e29b-41d4-a716-446655440002"
           },
           "session_uuid": {
             "type": "string",
-            "format": "uuid"
+            "format": "uuid",
+            "description": "UUID of the session this section belongs to",
+            "example": "650e8400-e29b-41d4-a716-446655440001"
           },
           "updated_at": {
             "type": "string",
-            "format": "date"
+            "format": "date",
+            "description": "Timestamp when the section was last updated (RFC 3339 format)"
           }
         }
       },
       "SessionSectionAddResponse": {
         "type": "object",
+        "description": "Response after successfully adding a section to a session",
         "required": [
           "message"
         ],
         "properties": {
           "message": {
-            "type": "string"
+            "type": "string",
+            "description": "Success message",
+            "example": "Section added to session successfully"
           }
         }
       },
       "SessionSectionCompleted": {
         "type": "object",
+        "description": "Completed section data with bullet points\n\nRepresents a completed section with its extracted bullet points.",
         "required": [
           "section_uuid",
           "bullet_points"
@@ -1840,16 +2202,25 @@
             "type": "array",
             "items": {
               "type": "string"
-            }
+            },
+            "description": "List of extracted bullet points for this section",
+            "example": [
+              "Chief complaint identified",
+              "History documented",
+              "Symptoms recorded"
+            ]
           },
           "section_uuid": {
             "type": "string",
-            "format": "uuid"
+            "format": "uuid",
+            "description": "UUID of the completed section",
+            "example": "750e8400-e29b-41d4-a716-446655440002"
           }
         }
       },
       "SessionSectionUpdateRequest": {
         "type": "object",
+        "description": "Request body for updating a session section\n\nAll fields are optional - only provided fields will be updated.",
         "properties": {
           "bullet_points": {
             "type": [
@@ -1858,41 +2229,55 @@
             ],
             "items": {
               "type": "string"
-            }
+            },
+            "description": "Updated bullet points for the section\n\nReplaces existing bullet points if provided.",
+            "example": [
+              "Updated point 1",
+              "Updated point 2",
+              "Updated point 3"
+            ]
           },
           "is_blocked": {
             "type": [
               "boolean",
               "null"
-            ]
+            ],
+            "description": "Whether to lock this section from further editing",
+            "example": false
           }
         }
       },
       "SessionSectionUpdateResponse": {
         "type": "object",
+        "description": "Response after successfully updating a session section",
         "required": [
           "message"
         ],
         "properties": {
           "message": {
-            "type": "string"
+            "type": "string",
+            "description": "Success or result message",
+            "example": "Session section updated successfully"
           }
         }
       },
       "SessionSectionUpdateWithAudioRequest": {
         "type": "object",
+        "description": "Multipart form data for updating session with audio\n\nUpload an audio file to be transcribed and added to the session.\nSupported audio formats: wav, mp3, ogg, webm, flac",
         "required": [
           "audio_blob"
         ],
         "properties": {
           "audio_blob": {
             "type": "string",
-            "format": "binary"
+            "format": "binary",
+            "description": "Audio file data in binary format\n\nThe audio will be transcribed using speech-to-text and processed for the session."
           }
         }
       },
       "SessionSectionUpdatedWithAudio": {
         "type": "object",
+        "description": "Section data updated with audio transcription\n\nContains the updated section information after processing audio input.",
         "required": [
           "title",
           "bullet_points"
@@ -1902,41 +2287,55 @@
             "type": "array",
             "items": {
               "type": "string"
-            }
+            },
+            "description": "Bullet points extracted from the audio transcription",
+            "example": [
+              "Patient reports headache for 3 days",
+              "Pain intensity: moderate to severe",
+              "No relief with over-the-counter medication"
+            ]
           },
           "title": {
-            "type": "string"
+            "type": "string",
+            "description": "Title of the updated section",
+            "example": "History Taking"
           }
         }
       },
       "SessionSectionUpdatedWithAudioResponse": {
         "type": "object",
+        "description": "Response after updating a section with audio transcription",
         "required": [
           "data"
         ],
         "properties": {
           "data": {
-            "$ref": "#/components/schemas/SessionSectionUpdatedWithAudio"
+            "$ref": "#/components/schemas/SessionSectionUpdatedWithAudio",
+            "description": "Updated section data with transcribed content"
           }
         }
       },
       "SessionSectionWithDetails": {
         "type": "object",
+        "description": "Session section with complete details\n\nCombines the session-specific section data with the section definition details.",
         "required": [
           "session_section",
           "section"
         ],
         "properties": {
           "section": {
-            "$ref": "#/components/schemas/Section"
+            "$ref": "#/components/schemas/Section",
+            "description": "Section definition details (name, type, description)"
           },
           "session_section": {
-            "$ref": "#/components/schemas/SessionSection"
+            "$ref": "#/components/schemas/SessionSection",
+            "description": "Session-specific section data (bullet points, status)"
           }
         }
       },
       "SessionSectionsCompletionResponse": {
         "type": "object",
+        "description": "Response containing completion status of all session sections",
         "required": [
           "sections"
         ],
@@ -1945,47 +2344,59 @@
             "type": "array",
             "items": {
               "$ref": "#/components/schemas/SessionSectionCompleted"
-            }
+            },
+            "description": "List of completed sections with their bullet points"
           }
         }
       },
       "SessionUpdateRequest": {
         "type": "object",
+        "description": "Request body for updating session metadata\n\nAll fields are optional - only provided fields will be updated.",
         "properties": {
           "duration": {
             "type": [
               "integer",
               "null"
             ],
-            "format": "int32"
+            "format": "int32",
+            "description": "Updated duration in seconds",
+            "example": 2100
           },
           "title": {
             "type": [
               "string",
               "null"
-            ]
+            ],
+            "description": "Updated title for the session",
+            "example": "Updated Patient Interview - January 15, 2024"
           },
           "transcription": {
             "type": [
               "string",
               "null"
-            ]
+            ],
+            "description": "Updated full transcription text",
+            "example": "Doctor: Good afternoon. Patient: Good afternoon..."
           }
         }
       },
       "SessionUpdateResponse": {
         "type": "object",
+        "description": "Response after successfully updating a session",
         "required": [
           "message"
         ],
         "properties": {
           "message": {
-            "type": "string"
+            "type": "string",
+            "description": "Success message",
+            "example": "Session updated successfully"
           }
         }
       },
       "SessionWithSections": {
         "type": "object",
+        "description": "Complete session data with all sections\n\nProvides a comprehensive view of a session including all associated sections with details.",
         "required": [
           "session",
           "sections"
@@ -1995,10 +2406,12 @@
             "type": "array",
             "items": {
               "$ref": "#/components/schemas/SessionSectionWithDetails"
-            }
+            },
+            "description": "List of all sections in this session with their details"
           },
           "session": {
-            "$ref": "#/components/schemas/Session"
+            "$ref": "#/components/schemas/Session",
+            "description": "Base session data"
           }
         }
       },
@@ -2020,6 +2433,7 @@
       },
       "TemplateInfo": {
         "type": "object",
+        "description": "Session template information\n\nTemplates define a predefined set of sections for interview sessions.",
         "required": [
           "uuid",
           "template_name",
@@ -2030,27 +2444,36 @@
         "properties": {
           "created_at": {
             "type": "string",
-            "format": "date"
+            "format": "date",
+            "description": "Timestamp when the template was created (RFC 3339 format)"
           },
           "template_name": {
-            "type": "string"
+            "type": "string",
+            "description": "Name of the template",
+            "example": "Standard Medical Interview"
           },
           "updated_at": {
             "type": "string",
-            "format": "date"
+            "format": "date",
+            "description": "Timestamp when the template was last updated (RFC 3339 format)"
           },
           "user_uuid": {
             "type": "string",
-            "format": "uuid"
+            "format": "uuid",
+            "description": "UUID of the user who created this template (superuser for global templates)",
+            "example": "550e8400-e29b-41d4-a716-446655440000"
           },
           "uuid": {
             "type": "string",
-            "format": "uuid"
+            "format": "uuid",
+            "description": "Unique identifier for the template",
+            "example": "850e8400-e29b-41d4-a716-446655440003"
           }
         }
       },
       "TemplateListResponse": {
         "type": "object",
+        "description": "Response containing a list of available templates",
         "required": [
           "templates"
         ],
@@ -2059,7 +2482,8 @@
             "type": "array",
             "items": {
               "$ref": "#/components/schemas/TemplateInfo"
-            }
+            },
+            "description": "Array of template information objects"
           }
         }
       },
@@ -2115,6 +2539,7 @@
       },
       "TokenTypeModel": {
         "type": "string",
+        "description": "OAuth2 token type enumeration",
         "enum": [
           "Bearer",
           "Refresh"
@@ -2159,21 +2584,27 @@
       },
       "UserLoginRequest": {
         "type": "object",
+        "description": "Request body for user login authentication\n\nThis structure is used for OAuth2 password flow authentication.\nSubmit as application/x-www-form-urlencoded content type.",
         "required": [
           "email",
           "password"
         ],
         "properties": {
           "email": {
-            "type": "string"
+            "type": "string",
+            "description": "User's email address used for authentication\n\nMust be a valid email format.",
+            "example": "user@example.com"
           },
           "password": {
-            "type": "string"
+            "type": "string",
+            "description": "User's password\n\nMust be between 3 and 20 characters.",
+            "example": "mySecurePassword123"
           }
         }
       },
       "UserRegisterRequest": {
         "type": "object",
+        "description": "Request body for new user registration\n\nCreates a new user account with the provided credentials.\nUpon successful registration, returns an OAuth2 token for immediate authentication.",
         "required": [
           "email",
           "first_name",
@@ -2183,24 +2614,35 @@
         ],
         "properties": {
           "email": {
-            "type": "string"
+            "type": "string",
+            "description": "User's email address (must be unique)\n\nMust be a valid email format and not already registered.",
+            "example": "newuser@example.com"
           },
           "first_name": {
-            "type": "string"
+            "type": "string",
+            "description": "User's first name\n\nMust be between 2 and 50 characters.",
+            "example": "John"
           },
           "last_name": {
-            "type": "string"
+            "type": "string",
+            "description": "User's last name\n\nMust be between 2 and 50 characters.",
+            "example": "Doe"
           },
           "password": {
-            "type": "string"
+            "type": "string",
+            "description": "User's password\n\nMust be between 8 and 100 characters for security.",
+            "example": "SecurePassword123!"
           },
           "password_confirmation": {
-            "type": "string"
+            "type": "string",
+            "description": "Password confirmation (must match password field)\n\nUsed to ensure the user correctly entered their desired password.",
+            "example": "SecurePassword123!"
           }
         }
       },
       "UserResponse": {
         "type": "object",
+        "description": "User profile information response\n\nContains complete user account details returned by the API.",
         "required": [
           "uuid",
           "first_name",
@@ -2213,32 +2655,44 @@
         "properties": {
           "created_at": {
             "type": "string",
-            "format": "date-time"
+            "description": "Timestamp when the user account was created (RFC 3339 format)",
+            "example": "2024-01-15T10:30:00Z"
           },
           "email": {
-            "type": "string"
+            "type": "string",
+            "description": "User's email address",
+            "example": "user@example.com"
           },
           "first_name": {
-            "type": "string"
+            "type": "string",
+            "description": "User's first name",
+            "example": "John"
           },
           "last_name": {
-            "type": "string"
+            "type": "string",
+            "description": "User's last name",
+            "example": "Doe"
           },
           "updated_at": {
             "type": "string",
-            "format": "date-time"
+            "description": "Timestamp when the user account was last updated (RFC 3339 format)",
+            "example": "2024-01-20T14:45:00Z"
           },
           "user_role": {
-            "$ref": "#/components/schemas/UserRoleModel"
+            "$ref": "#/components/schemas/UserRoleModel",
+            "description": "User's role in the system (user, admin, or superuser)"
           },
           "uuid": {
             "type": "string",
-            "format": "uuid"
+            "format": "uuid",
+            "description": "Unique identifier for the user",
+            "example": "550e8400-e29b-41d4-a716-446655440000"
           }
         }
       },
       "UserRoleModel": {
         "type": "string",
+        "description": "User role enumeration for authorization and access control",
         "enum": [
           "user",
           "admin",
@@ -2247,24 +2701,31 @@
       },
       "UserUpdateRequest": {
         "type": "object",
+        "description": "Request body for updating user profile information\n\nAll fields are optional - only provided fields will be updated.\nAt least one field should be provided for a meaningful update.",
         "properties": {
           "email": {
             "type": [
               "string",
               "null"
-            ]
+            ],
+            "description": "New email address (optional)\n\nMust be a valid email format and not already registered by another user.",
+            "example": "newemail@example.com"
           },
           "first_name": {
             "type": [
               "string",
               "null"
-            ]
+            ],
+            "description": "New first name (optional)\n\nMust be between 2 and 50 characters if provided.",
+            "example": "Jane"
           },
           "last_name": {
             "type": [
               "string",
               "null"
-            ]
+            ],
+            "description": "New last name (optional)\n\nMust be between 2 and 50 characters if provided.",
+            "example": "Smith"
           }
         }
       }
