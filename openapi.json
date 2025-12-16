@@ -1,10 +1,2315 @@
 {
-  "openapi": "3.0.0",
+  "openapi": "3.1.0",
   "info": {
-    "title": "MedWave API",
-    "description": "API documentation will be automatically updated from the private repository",
-    "version": "1.0.0"
+    "title": "medwave-backend-rust",
+    "description": "",
+    "license": {
+      "name": ""
+    },
+    "version": "0.1.0"
   },
-  "paths": {},
-  "components": {}
+  "paths": {
+    "/auth/login": {
+      "post": {
+        "tags": [
+          "authentication"
+        ],
+        "operationId": "oauth2_token",
+        "requestBody": {
+          "content": {
+            "application/x-www-form-urlencoded": {
+              "schema": {
+                "$ref": "#/components/schemas/UserLoginRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Access token granted",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OAuth2TokenResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/JsonErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Invalid credentials",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/JsonErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/auth/logout": {
+      "post": {
+        "tags": [
+          "authentication"
+        ],
+        "summary": "User logout endpoint",
+        "description": "Invalidates the refresh token by clearing the HTTP-only cookie.",
+        "operationId": "logout",
+        "responses": {
+          "200": {
+            "description": "Logout successful"
+          },
+          "400": {
+            "description": "No refresh token cookie found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/JsonErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/auth/refresh": {
+      "post": {
+        "tags": [
+          "authentication"
+        ],
+        "summary": "Refresh token endpoint",
+        "description": "Validates a refresh token from HTTP-only cookie and issues a new access token and refresh token pair.",
+        "operationId": "refresh_token",
+        "responses": {
+          "200": {
+            "description": "Tokens refreshed successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OAuth2TokenResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid or missing refresh token",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/JsonErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Invalid refresh token",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/JsonErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/auth/register": {
+      "post": {
+        "tags": [
+          "authentication"
+        ],
+        "summary": "User registration endpoint",
+        "description": "Registers a new user with email, first name, last name, password and password confirmation.",
+        "operationId": "register",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UserRegisterRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "Registration successful",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OAuth2TokenResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Password mismatch",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/JsonErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "User already exists",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/JsonErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/health-check": {
+      "get": {
+        "tags": [
+          "health-check"
+        ],
+        "summary": "Health check endpoint",
+        "description": "Returns a simple health check response to verify the service is running.",
+        "operationId": "unprotected_health_check",
+        "responses": {
+          "200": {
+            "description": "Service is healthy",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HealthResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/health-check-protected": {
+      "get": {
+        "tags": [
+          "health-check"
+        ],
+        "summary": "Advanced health check endpoint",
+        "description": "Returns a more detailed health check response with system information.",
+        "operationId": "protected_health_check",
+        "responses": {
+          "200": {
+            "description": "System is healthy with details",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HealthInfo"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized - Invalid or missing JWT token"
+          }
+        },
+        "security": [
+          {
+            "oauth2_token": []
+          }
+        ]
+      }
+    },
+    "/sections": {
+      "post": {
+        "tags": [
+          "section"
+        ],
+        "operationId": "handle_create_section",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SectionCreateRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "Section created successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SectionCreateResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/JsonErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/JsonErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "oauth2_token": []
+          }
+        ]
+      }
+    },
+    "/sessions": {
+      "post": {
+        "tags": [
+          "session"
+        ],
+        "operationId": "handle_create_session",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SessionCreateRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "Session created successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SessionCreateResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/JsonErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "oauth2_token": []
+          }
+        ]
+      }
+    },
+    "/sessions/my": {
+      "get": {
+        "tags": [
+          "session"
+        ],
+        "operationId": "handle_get_user_sessions",
+        "responses": {
+          "200": {
+            "description": "Sessions retrieved successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SessionListResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/JsonErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "oauth2_token": []
+          }
+        ]
+      }
+    },
+    "/sessions/{session_uuid}": {
+      "get": {
+        "tags": [
+          "session"
+        ],
+        "operationId": "handle_get_session",
+        "parameters": [
+          {
+            "name": "session_uuid",
+            "in": "path",
+            "description": "Session UUID",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Session retrieved successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SessionGetResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/JsonErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Session not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/JsonErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "oauth2_token": []
+          }
+        ]
+      },
+      "patch": {
+        "tags": [
+          "session"
+        ],
+        "operationId": "handle_update_session_by_uuid",
+        "parameters": [
+          {
+            "name": "session_uuid",
+            "in": "path",
+            "description": "Session UUID",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SessionUpdateRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Session updated successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SessionUpdateResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/JsonErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Session not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/JsonErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "oauth2_token": []
+          }
+        ]
+      }
+    },
+    "/sessions/{session_uuid}/extend-with-audio": {
+      "post": {
+        "tags": [
+          "session"
+        ],
+        "operationId": "handle_extend_session_with_audio",
+        "parameters": [
+          {
+            "name": "session_uuid",
+            "in": "path",
+            "description": "Session UUID",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "description": "Audio file to transcribe and extend session transcription with",
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "$ref": "#/components/schemas/SessionSectionUpdateWithAudioRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Session transcription extended successfully with audio",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SessionGetResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request or audio format",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/JsonErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/JsonErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Session not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/JsonErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "oauth2_token": []
+          }
+        ]
+      }
+    },
+    "/sessions/{session_uuid}/medical-note": {
+      "post": {
+        "tags": [
+          "session"
+        ],
+        "operationId": "handle_generate_medical_note",
+        "parameters": [
+          {
+            "name": "session_uuid",
+            "in": "path",
+            "description": "Session UUID",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Medical note generated successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MedicalNoteResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/JsonErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Session not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/JsonErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "oauth2_token": []
+          }
+        ]
+      }
+    },
+    "/sessions/{session_uuid}/override-with-audio": {
+      "patch": {
+        "tags": [
+          "session"
+        ],
+        "operationId": "handle_override_session_with_audio",
+        "parameters": [
+          {
+            "name": "session_uuid",
+            "in": "path",
+            "description": "Session UUID",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "description": "Audio file to transcribe and override session transcription with",
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "$ref": "#/components/schemas/SessionSectionUpdateWithAudioRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Session transcription overridden successfully with audio",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SessionSectionUpdateResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request or audio format",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/JsonErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/JsonErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Session not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/JsonErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "oauth2_token": []
+          }
+        ]
+      }
+    },
+    "/sessions/{session_uuid}/sections/{section_uuid}": {
+      "post": {
+        "tags": [
+          "session"
+        ],
+        "operationId": "handle_add_section_to_session",
+        "parameters": [
+          {
+            "name": "session_uuid",
+            "in": "path",
+            "description": "Session UUID",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "section_uuid",
+            "in": "path",
+            "description": "Section UUID",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "Section added to session successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SessionSectionAddResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/JsonErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Session or section not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/JsonErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Section already exists in session",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/JsonErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "oauth2_token": []
+          }
+        ]
+      },
+      "delete": {
+        "tags": [
+          "session"
+        ],
+        "operationId": "handle_delete_session_section_by_uuid",
+        "parameters": [
+          {
+            "name": "session_uuid",
+            "in": "path",
+            "description": "Session UUID",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "section_uuid",
+            "in": "path",
+            "description": "Section UUID",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Session section deleted successfully"
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/JsonErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Session section not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/JsonErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "oauth2_token": []
+          }
+        ]
+      },
+      "patch": {
+        "tags": [
+          "session"
+        ],
+        "operationId": "handle_update_session_section_by_uuid",
+        "parameters": [
+          {
+            "name": "session_uuid",
+            "in": "path",
+            "description": "Session UUID",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "section_uuid",
+            "in": "path",
+            "description": "Section UUID",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SessionSectionUpdateRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Session section updated successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SessionSectionUpdateResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/JsonErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Session section not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/JsonErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "oauth2_token": []
+          }
+        ]
+      }
+    },
+    "/sessions/{session_uuid}/sections/{section_uuid}/update-with-audio": {
+      "post": {
+        "tags": [
+          "session"
+        ],
+        "operationId": "handle_update_session_section_with_audio_by_uuid",
+        "parameters": [
+          {
+            "name": "session_uuid",
+            "in": "path",
+            "description": "Session UUID",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "section_uuid",
+            "in": "path",
+            "description": "Section UUID",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "description": "Audio file to transcribe and update section with",
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "$ref": "#/components/schemas/SessionSectionUpdateWithAudioRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Section updated successfully with audio transcription",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SessionSectionUpdateResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request or audio format",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/JsonErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/JsonErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Session section not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/JsonErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "oauth2_token": []
+          }
+        ]
+      }
+    },
+    "/sessions/{session_uuid}/summarize": {
+      "post": {
+        "tags": [
+          "session"
+        ],
+        "operationId": "handle_summarize_session",
+        "parameters": [
+          {
+            "name": "session_uuid",
+            "in": "path",
+            "description": "Session UUID",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Session summarized successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SessionGetResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/JsonErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Session not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/JsonErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "oauth2_token": []
+          }
+        ]
+      }
+    },
+    "/speech2text/transcribe": {
+      "get": {
+        "tags": [
+          "speech2text"
+        ],
+        "operationId": "handle_microphone_stream",
+        "responses": {
+          "101": {
+            "description": "WebSocket connection established"
+          }
+        },
+        "security": [
+          {
+            "oauth2_token": []
+          }
+        ]
+      }
+    },
+    "/templates/global/all/info": {
+      "get": {
+        "tags": [
+          "template"
+        ],
+        "operationId": "handle_get_all_global_templates",
+        "responses": {
+          "200": {
+            "description": "Templates retrieved successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TemplateListResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal server error"
+          }
+        },
+        "security": [
+          {
+            "oauth2_token": []
+          }
+        ]
+      }
+    },
+    "/users/me": {
+      "get": {
+        "tags": [
+          "user"
+        ],
+        "summary": "Get current user information",
+        "description": "Returns the current authenticated user's information including uuid,\nfirst_name, last_name, email, user_role, created_at, and updated_at.",
+        "operationId": "get_me",
+        "responses": {
+          "200": {
+            "description": "User information retrieved successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UserResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized - invalid or missing token",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/JsonErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "oauth2_token": []
+          }
+        ]
+      },
+      "patch": {
+        "tags": [
+          "user"
+        ],
+        "summary": "Update current user information",
+        "description": "Allows authenticated users to update their profile information including\nfirst_name, last_name, and email. Only the fields provided in the request\nwill be updated.",
+        "operationId": "patch_me",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UserUpdateRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "User information updated successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UserResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid input data",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/JsonErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized - invalid or missing token",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/JsonErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Email already exists",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/JsonErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "oauth2_token": []
+          }
+        ]
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "DbError": {
+        "oneOf": [
+          {
+            "type": "object",
+            "required": [
+              "Connection"
+            ],
+            "properties": {
+              "Connection": {
+                "type": "string"
+              }
+            }
+          },
+          {
+            "type": "object",
+            "required": [
+              "QueryExecution"
+            ],
+            "properties": {
+              "QueryExecution": {
+                "type": "string"
+              }
+            }
+          },
+          {
+            "type": "object",
+            "required": [
+              "Migration"
+            ],
+            "properties": {
+              "Migration": {
+                "type": "string"
+              }
+            }
+          },
+          {
+            "type": "object",
+            "required": [
+              "Transaction"
+            ],
+            "properties": {
+              "Transaction": {
+                "type": "string"
+              }
+            }
+          },
+          {
+            "type": "object",
+            "required": [
+              "Pool"
+            ],
+            "properties": {
+              "Pool": {
+                "type": "string"
+              }
+            }
+          }
+        ]
+      },
+      "HealthInfo": {
+        "type": "object",
+        "required": [
+          "status",
+          "timestamp",
+          "version",
+          "service"
+        ],
+        "properties": {
+          "service": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string"
+          },
+          "timestamp": {
+            "type": "string"
+          },
+          "version": {
+            "type": "string"
+          }
+        }
+      },
+      "HealthResponse": {
+        "type": "object",
+        "required": [
+          "message"
+        ],
+        "properties": {
+          "message": {
+            "type": "string"
+          }
+        }
+      },
+      "JsonErrorResponse": {
+        "type": "object",
+        "description": "JSON error response for API errors\n\nThis struct provides a consistent format for all error responses\nacross the application. It includes a request_id for tracing\nand a message explaining what went wrong.",
+        "required": [
+          "message",
+          "status"
+        ],
+        "properties": {
+          "message": {
+            "type": "string",
+            "description": "Human-readable error message explaining what happened"
+          },
+          "status": {
+            "type": "integer",
+            "format": "int32",
+            "description": "Status code",
+            "example": 400,
+            "minimum": 0
+          }
+        }
+      },
+      "MedicalNoteResponse": {
+        "type": "object",
+        "required": [
+          "note"
+        ],
+        "properties": {
+          "note": {
+            "type": "string"
+          }
+        }
+      },
+      "MultipartError": {
+        "oneOf": [
+          {
+            "type": "object",
+            "required": [
+              "ProcessingFailed"
+            ],
+            "properties": {
+              "ProcessingFailed": {
+                "type": "string"
+              }
+            }
+          },
+          {
+            "type": "object",
+            "required": [
+              "AudioReadFailed"
+            ],
+            "properties": {
+              "AudioReadFailed": {
+                "type": "string"
+              }
+            }
+          },
+          {
+            "type": "string",
+            "enum": [
+              "NoAudioData"
+            ]
+          }
+        ]
+      },
+      "OAuth2RefreshRequest": {
+        "type": "object",
+        "required": [
+          "refresh_token"
+        ],
+        "properties": {
+          "refresh_token": {
+            "type": "string"
+          }
+        }
+      },
+      "OAuth2TokenResponse": {
+        "type": "object",
+        "required": [
+          "access_token",
+          "token_type",
+          "expires_in"
+        ],
+        "properties": {
+          "access_token": {
+            "type": "string"
+          },
+          "expires_in": {
+            "type": "integer",
+            "format": "int64",
+            "minimum": 0
+          },
+          "token_type": {
+            "$ref": "#/components/schemas/TokenTypeModel"
+          }
+        }
+      },
+      "OpenAIApiError": {
+        "oneOf": [
+          {
+            "type": "string",
+            "enum": [
+              "SchemaSerializationError"
+            ]
+          },
+          {
+            "type": "string",
+            "enum": [
+              "ResponseFormatError"
+            ]
+          },
+          {
+            "type": "object",
+            "required": [
+              "RequestError"
+            ],
+            "properties": {
+              "RequestError": {
+                "type": "string"
+              }
+            }
+          },
+          {
+            "type": "object",
+            "required": [
+              "HttpError"
+            ],
+            "properties": {
+              "HttpError": {
+                "type": "string"
+              }
+            }
+          },
+          {
+            "type": "object",
+            "required": [
+              "ApiError"
+            ],
+            "properties": {
+              "ApiError": {
+                "type": "string"
+              }
+            }
+          },
+          {
+            "type": "object",
+            "required": [
+              "JsonError"
+            ],
+            "properties": {
+              "JsonError": {
+                "type": "string"
+              }
+            }
+          },
+          {
+            "type": "object",
+            "required": [
+              "FileError"
+            ],
+            "properties": {
+              "FileError": {
+                "type": "string"
+              }
+            }
+          },
+          {
+            "type": "object",
+            "required": [
+              "StreamError"
+            ],
+            "properties": {
+              "StreamError": {
+                "type": "string"
+              }
+            }
+          },
+          {
+            "type": "object",
+            "required": [
+              "InvalidArgument"
+            ],
+            "properties": {
+              "InvalidArgument": {
+                "type": "string"
+              }
+            }
+          }
+        ]
+      },
+      "Section": {
+        "type": "object",
+        "required": [
+          "uuid",
+          "title",
+          "section_type",
+          "description",
+          "created_at"
+        ],
+        "properties": {
+          "created_at": {
+            "type": "string",
+            "format": "date"
+          },
+          "description": {
+            "type": "string"
+          },
+          "is_blocked": {
+            "type": [
+              "boolean",
+              "null"
+            ]
+          },
+          "section_type": {
+            "$ref": "#/components/schemas/SectionType"
+          },
+          "title": {
+            "type": "string"
+          },
+          "user_uuid": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "uuid"
+          },
+          "uuid": {
+            "type": "string",
+            "format": "uuid"
+          }
+        }
+      },
+      "SectionCreateRequest": {
+        "type": "object",
+        "required": [
+          "name",
+          "description",
+          "section_type"
+        ],
+        "properties": {
+          "description": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "section_type": {
+            "$ref": "#/components/schemas/SectionType"
+          }
+        }
+      },
+      "SectionCreateResponse": {
+        "type": "object",
+        "required": [
+          "section_uuid"
+        ],
+        "properties": {
+          "section_uuid": {
+            "type": "string",
+            "format": "uuid"
+          }
+        }
+      },
+      "SectionResponse": {
+        "type": "object",
+        "required": [
+          "section"
+        ],
+        "properties": {
+          "section": {
+            "$ref": "#/components/schemas/Section"
+          }
+        }
+      },
+      "SectionType": {
+        "type": "string",
+        "enum": [
+          "history_taking",
+          "physical_examination"
+        ]
+      },
+      "Session": {
+        "type": "object",
+        "required": [
+          "uuid",
+          "user_uuid",
+          "title",
+          "transcription",
+          "duration",
+          "document",
+          "created_at",
+          "updated_at"
+        ],
+        "properties": {
+          "created_at": {
+            "type": "string",
+            "format": "date"
+          },
+          "document": {
+            "type": "string"
+          },
+          "duration": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "title": {
+            "type": "string"
+          },
+          "transcription": {
+            "type": "string"
+          },
+          "updated_at": {
+            "type": "string",
+            "format": "date"
+          },
+          "user_uuid": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "uuid": {
+            "type": "string",
+            "format": "uuid"
+          }
+        }
+      },
+      "SessionCreateRequest": {
+        "type": "object",
+        "required": [
+          "template_uuid"
+        ],
+        "properties": {
+          "template_uuid": {
+            "type": "string",
+            "format": "uuid"
+          }
+        }
+      },
+      "SessionCreateResponse": {
+        "type": "object",
+        "required": [
+          "session_uuid"
+        ],
+        "properties": {
+          "session_uuid": {
+            "type": "string",
+            "format": "uuid"
+          }
+        }
+      },
+      "SessionError": {
+        "oneOf": [
+          {
+            "type": "object",
+            "required": [
+              "NotFound"
+            ],
+            "properties": {
+              "NotFound": {
+                "type": "string",
+                "format": "uuid"
+              }
+            }
+          },
+          {
+            "type": "object",
+            "required": [
+              "InvalidUuid"
+            ],
+            "properties": {
+              "InvalidUuid": {
+                "type": "string"
+              }
+            }
+          },
+          {
+            "type": "string",
+            "enum": [
+              "AccessDenied"
+            ]
+          },
+          {
+            "type": "object",
+            "required": [
+              "SectionNotFoundByUuid"
+            ],
+            "properties": {
+              "SectionNotFoundByUuid": {
+                "type": "array",
+                "items": {
+                  "type": "string",
+                  "format": "uuid"
+                },
+                "maxItems": 2,
+                "minItems": 2
+              }
+            }
+          },
+          {
+            "type": "string",
+            "enum": [
+              "SectionNotFoundOrAccessDenied"
+            ]
+          },
+          {
+            "type": "object",
+            "required": [
+              "SectionAlreadyExists"
+            ],
+            "properties": {
+              "SectionAlreadyExists": {
+                "type": "array",
+                "items": {
+                  "type": "string",
+                  "format": "uuid"
+                },
+                "maxItems": 2,
+                "minItems": 2
+              }
+            }
+          }
+        ]
+      },
+      "SessionGetResponse": {
+        "type": "object",
+        "required": [
+          "session_data"
+        ],
+        "properties": {
+          "session_data": {
+            "$ref": "#/components/schemas/SessionWithSections"
+          }
+        }
+      },
+      "SessionInfo": {
+        "type": "object",
+        "required": [
+          "uuid",
+          "user_uuid",
+          "title",
+          "duration",
+          "document",
+          "created_at",
+          "updated_at"
+        ],
+        "properties": {
+          "created_at": {
+            "type": "string",
+            "format": "date"
+          },
+          "document": {
+            "type": "string"
+          },
+          "duration": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "title": {
+            "type": "string"
+          },
+          "updated_at": {
+            "type": "string",
+            "format": "date"
+          },
+          "user_uuid": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "uuid": {
+            "type": "string",
+            "format": "uuid"
+          }
+        }
+      },
+      "SessionListResponse": {
+        "type": "object",
+        "required": [
+          "sessions"
+        ],
+        "properties": {
+          "sessions": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/SessionInfo"
+            }
+          }
+        }
+      },
+      "SessionSection": {
+        "type": "object",
+        "required": [
+          "section_uuid",
+          "session_uuid",
+          "bullet_points",
+          "is_blocked",
+          "updated_at"
+        ],
+        "properties": {
+          "bullet_points": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "is_blocked": {
+            "type": "boolean"
+          },
+          "section_uuid": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "session_uuid": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "updated_at": {
+            "type": "string",
+            "format": "date"
+          }
+        }
+      },
+      "SessionSectionAddResponse": {
+        "type": "object",
+        "required": [
+          "message"
+        ],
+        "properties": {
+          "message": {
+            "type": "string"
+          }
+        }
+      },
+      "SessionSectionCompleted": {
+        "type": "object",
+        "required": [
+          "section_uuid",
+          "bullet_points"
+        ],
+        "properties": {
+          "bullet_points": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "section_uuid": {
+            "type": "string",
+            "format": "uuid"
+          }
+        }
+      },
+      "SessionSectionUpdateRequest": {
+        "type": "object",
+        "properties": {
+          "bullet_points": {
+            "type": [
+              "array",
+              "null"
+            ],
+            "items": {
+              "type": "string"
+            }
+          },
+          "is_blocked": {
+            "type": [
+              "boolean",
+              "null"
+            ]
+          }
+        }
+      },
+      "SessionSectionUpdateResponse": {
+        "type": "object",
+        "required": [
+          "message"
+        ],
+        "properties": {
+          "message": {
+            "type": "string"
+          }
+        }
+      },
+      "SessionSectionUpdateWithAudioRequest": {
+        "type": "object",
+        "required": [
+          "audio_blob"
+        ],
+        "properties": {
+          "audio_blob": {
+            "type": "string",
+            "format": "binary"
+          }
+        }
+      },
+      "SessionSectionUpdatedWithAudio": {
+        "type": "object",
+        "required": [
+          "title",
+          "bullet_points"
+        ],
+        "properties": {
+          "bullet_points": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "title": {
+            "type": "string"
+          }
+        }
+      },
+      "SessionSectionUpdatedWithAudioResponse": {
+        "type": "object",
+        "required": [
+          "data"
+        ],
+        "properties": {
+          "data": {
+            "$ref": "#/components/schemas/SessionSectionUpdatedWithAudio"
+          }
+        }
+      },
+      "SessionSectionWithDetails": {
+        "type": "object",
+        "required": [
+          "session_section",
+          "section"
+        ],
+        "properties": {
+          "section": {
+            "$ref": "#/components/schemas/Section"
+          },
+          "session_section": {
+            "$ref": "#/components/schemas/SessionSection"
+          }
+        }
+      },
+      "SessionSectionsCompletionResponse": {
+        "type": "object",
+        "required": [
+          "sections"
+        ],
+        "properties": {
+          "sections": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/SessionSectionCompleted"
+            }
+          }
+        }
+      },
+      "SessionUpdateRequest": {
+        "type": "object",
+        "properties": {
+          "duration": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int32"
+          },
+          "title": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "transcription": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        }
+      },
+      "SessionUpdateResponse": {
+        "type": "object",
+        "required": [
+          "message"
+        ],
+        "properties": {
+          "message": {
+            "type": "string"
+          }
+        }
+      },
+      "SessionWithSections": {
+        "type": "object",
+        "required": [
+          "session",
+          "sections"
+        ],
+        "properties": {
+          "sections": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/SessionSectionWithDetails"
+            }
+          },
+          "session": {
+            "$ref": "#/components/schemas/Session"
+          }
+        }
+      },
+      "TemplateError": {
+        "oneOf": [
+          {
+            "type": "object",
+            "required": [
+              "NotFound"
+            ],
+            "properties": {
+              "NotFound": {
+                "type": "string",
+                "format": "uuid"
+              }
+            }
+          }
+        ]
+      },
+      "TemplateInfo": {
+        "type": "object",
+        "required": [
+          "uuid",
+          "template_name",
+          "user_uuid",
+          "created_at",
+          "updated_at"
+        ],
+        "properties": {
+          "created_at": {
+            "type": "string",
+            "format": "date"
+          },
+          "template_name": {
+            "type": "string"
+          },
+          "updated_at": {
+            "type": "string",
+            "format": "date"
+          },
+          "user_uuid": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "uuid": {
+            "type": "string",
+            "format": "uuid"
+          }
+        }
+      },
+      "TemplateListResponse": {
+        "type": "object",
+        "required": [
+          "templates"
+        ],
+        "properties": {
+          "templates": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/TemplateInfo"
+            }
+          }
+        }
+      },
+      "TokenError": {
+        "oneOf": [
+          {
+            "type": "object",
+            "required": [
+              "InvalidToken"
+            ],
+            "properties": {
+              "InvalidToken": {
+                "type": "string"
+              }
+            }
+          },
+          {
+            "type": "string",
+            "enum": [
+              "InvalidRefreshToken"
+            ]
+          },
+          {
+            "type": "string",
+            "enum": [
+              "TokenExpired"
+            ]
+          },
+          {
+            "type": "string",
+            "enum": [
+              "MissingToken"
+            ]
+          },
+          {
+            "type": "string",
+            "enum": [
+              "InvalidWebsocketTokenFormat"
+            ]
+          },
+          {
+            "type": "object",
+            "required": [
+              "TokenCreationError"
+            ],
+            "properties": {
+              "TokenCreationError": {
+                "type": "string"
+              }
+            }
+          }
+        ]
+      },
+      "TokenTypeModel": {
+        "type": "string",
+        "enum": [
+          "Bearer",
+          "Refresh"
+        ]
+      },
+      "UserContext": {
+        "type": "object",
+        "description": "Safe user context for use in middleware and handlers.",
+        "required": [
+          "uuid",
+          "email",
+          "user_role"
+        ],
+        "properties": {
+          "email": {
+            "type": "string",
+            "description": "User's email address"
+          },
+          "user_role": {
+            "$ref": "#/components/schemas/UserRoleModel",
+            "description": "User's role for authorization purposes"
+          },
+          "uuid": {
+            "type": "string",
+            "format": "uuid",
+            "description": "Unique identifier for the user"
+          }
+        }
+      },
+      "UserError": {
+        "type": "string",
+        "enum": [
+          "UserNotFound",
+          "UserAlreadyExists",
+          "InvalidPassword",
+          "InvalidPasswordHash",
+          "PasswordMismatch",
+          "PasswordHashingFailed",
+          "UserCreationFailed",
+          "UserUpdateFailed"
+        ]
+      },
+      "UserLoginRequest": {
+        "type": "object",
+        "required": [
+          "email",
+          "password"
+        ],
+        "properties": {
+          "email": {
+            "type": "string"
+          },
+          "password": {
+            "type": "string"
+          }
+        }
+      },
+      "UserRegisterRequest": {
+        "type": "object",
+        "required": [
+          "email",
+          "first_name",
+          "last_name",
+          "password",
+          "password_confirmation"
+        ],
+        "properties": {
+          "email": {
+            "type": "string"
+          },
+          "first_name": {
+            "type": "string"
+          },
+          "last_name": {
+            "type": "string"
+          },
+          "password": {
+            "type": "string"
+          },
+          "password_confirmation": {
+            "type": "string"
+          }
+        }
+      },
+      "UserResponse": {
+        "type": "object",
+        "required": [
+          "uuid",
+          "first_name",
+          "last_name",
+          "email",
+          "user_role",
+          "created_at",
+          "updated_at"
+        ],
+        "properties": {
+          "created_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "email": {
+            "type": "string"
+          },
+          "first_name": {
+            "type": "string"
+          },
+          "last_name": {
+            "type": "string"
+          },
+          "updated_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "user_role": {
+            "$ref": "#/components/schemas/UserRoleModel"
+          },
+          "uuid": {
+            "type": "string",
+            "format": "uuid"
+          }
+        }
+      },
+      "UserRoleModel": {
+        "type": "string",
+        "enum": [
+          "user",
+          "admin",
+          "superuser"
+        ]
+      },
+      "UserUpdateRequest": {
+        "type": "object",
+        "properties": {
+          "email": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "first_name": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "last_name": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        }
+      }
+    },
+    "securitySchemes": {
+      "oauth2_token": {
+        "type": "oauth2",
+        "flows": {
+          "password": {
+            "tokenUrl": "http://localhost:8000/auth/login",
+            "scopes": {}
+          }
+        },
+        "description": "OAuth2 Password Flow"
+      }
+    }
+  },
+  "tags": [
+    {
+      "name": "authentication",
+      "description": "Authentication API"
+    },
+    {
+      "name": "user",
+      "description": "User Management API"
+    },
+    {
+      "name": "health-check",
+      "description": "Health check API"
+    },
+    {
+      "name": "speech2text",
+      "description": "Speech to Text API"
+    },
+    {
+      "name": "session",
+      "description": "Session Management API"
+    },
+    {
+      "name": "section",
+      "description": "Section Management API"
+    },
+    {
+      "name": "template",
+      "description": "Template Management API"
+    }
+  ]
 }
