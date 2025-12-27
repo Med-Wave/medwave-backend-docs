@@ -289,6 +289,39 @@
       }
     },
     "/sections": {
+      "get": {
+        "tags": [
+          "section"
+        ],
+        "operationId": "handle_get_all_sections",
+        "responses": {
+          "200": {
+            "description": "Sections retrieved successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SectionListResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/JsonErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "oauth2_token": []
+          }
+        ]
+      },
       "post": {
         "tags": [
           "section"
@@ -364,8 +397,23 @@
           "session"
         ],
         "summary": "Create a new interview session",
-        "description": "Creates a new medical interview session based on a predefined template.\nThe template determines which sections (e.g., History Taking, Physical Examination)\nwill be included in the session.\n\nAfter creation, the session can be populated with data through:\n- Audio transcription endpoints\n- Manual section updates\n- WebSocket real-time transcription",
+        "description": "Creates a new medical interview session based on a predefined template.\nThe template determines which sections (e.g., History Taking, Physical Examination)\nwill be included in the session.\n\nAfter creation, the session can be populated with data through:\n- Audio transcription endpoints\n- Manual section updates\n- WebSocket real-time transcription\n\n**Timezone Support:** Provide the `X-Client-Timezone` header with an IANA timezone name\n(e.g., \"America/New_York\", \"Asia/Jakarta\") to set the session title in your local timezone.",
         "operationId": "handle_create_session",
+        "parameters": [
+          {
+            "name": "X-Client-Timezone",
+            "in": "header",
+            "description": "IANA timezone name for timestamp formatting (e.g., 'America/New_York', 'Asia/Jakarta'). If not provided or invalid, defaults to UTC.",
+            "required": false,
+            "schema": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "example": "America/New_York"
+          }
+        ],
         "requestBody": {
           "description": "Template UUID to base the new session on",
           "content": {
@@ -1260,38 +1308,71 @@
         ]
       }
     },
-    "/templates/global/all/info": {
+    "/templates": {
       "get": {
         "tags": [
           "template"
         ],
-        "summary": "Get all global templates",
-        "description": "Retrieves a list of all globally available session templates.\nTemplates define predefined sets of sections for creating structured\ninterview sessions.\n\nGlobal templates are created by superusers and are available to all users.\nEach template specifies which sections should be included when creating\na new session (e.g., \"Standard Medical Interview\" might include History Taking,\nPhysical Examination, and Assessment sections).\n\nUse the returned template UUIDs when creating new sessions via POST /sessions.",
-        "operationId": "handle_get_all_global_templates",
+        "summary": "Get all accessible templates (lightweight list)",
+        "description": "Returns a list of all templates accessible to the user (own + global).\nSorted: favorites first (A-Z), then non-favorites (A-Z).\nDoes not include sections - use GET /templates/{uuid} for full details.",
+        "operationId": "handle_get_all_templates",
         "responses": {
           "200": {
-            "description": "Global templates retrieved successfully",
+            "description": "Templates retrieved successfully",
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/TemplateListResponse"
-                },
-                "example": {
-                  "templates": [
-                    {
-                      "created_at": "2024-01-01T00:00:00Z",
-                      "template_name": "Standard Medical Interview",
-                      "updated_at": "2024-01-01T00:00:00Z",
-                      "user_uuid": "550e8400-e29b-41d4-a716-446655440000",
-                      "uuid": "850e8400-e29b-41d4-a716-446655440003"
-                    }
-                  ]
+                  "$ref": "#/components/schemas/TemplateInfoListResponse"
                 }
               }
             }
           },
           "401": {
-            "description": "Unauthorized - invalid or missing JWT token",
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/JsonErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "oauth2_token": []
+          }
+        ]
+      },
+      "post": {
+        "tags": [
+          "template"
+        ],
+        "summary": "Create a new template",
+        "operationId": "handle_create_template",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TemplateCreateRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "Template created successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TemplateCreateResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request",
             "content": {
               "application/json": {
                 "schema": {
@@ -1300,8 +1381,363 @@
               }
             }
           },
-          "500": {
-            "description": "Internal server error",
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/JsonErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "oauth2_token": []
+          }
+        ]
+      }
+    },
+    "/templates/{template_uuid}": {
+      "get": {
+        "tags": [
+          "template"
+        ],
+        "summary": "Get a single template by UUID with full details",
+        "description": "Returns template details including all sections, is_owner, and is_favorite fields.",
+        "operationId": "handle_get_template_by_uuid",
+        "parameters": [
+          {
+            "name": "template_uuid",
+            "in": "path",
+            "description": "Template UUID",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Template retrieved successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TemplateDetailResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/JsonErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Template not found or access denied",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/JsonErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "oauth2_token": []
+          }
+        ]
+      },
+      "put": {
+        "tags": [
+          "template"
+        ],
+        "summary": "Update a template",
+        "operationId": "handle_update_template",
+        "parameters": [
+          {
+            "name": "template_uuid",
+            "in": "path",
+            "description": "Template UUID to update",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TemplateUpdateRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Template updated successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TemplateUpdateResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/JsonErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/JsonErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Template not found or access denied",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/JsonErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "oauth2_token": []
+          }
+        ]
+      },
+      "delete": {
+        "tags": [
+          "template"
+        ],
+        "summary": "Delete a template",
+        "operationId": "handle_delete_template",
+        "parameters": [
+          {
+            "name": "template_uuid",
+            "in": "path",
+            "description": "Template UUID to delete",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Template deleted successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TemplateDeleteResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/JsonErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Template not found or access denied",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/JsonErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "oauth2_token": []
+          }
+        ]
+      }
+    },
+    "/templates/{template_uuid}/clone": {
+      "post": {
+        "tags": [
+          "template"
+        ],
+        "summary": "Clone an existing template",
+        "operationId": "handle_clone_template",
+        "parameters": [
+          {
+            "name": "template_uuid",
+            "in": "path",
+            "description": "Template UUID to clone",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "Template cloned successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TemplateCreateResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/JsonErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Template not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/JsonErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "oauth2_token": []
+          }
+        ]
+      }
+    },
+    "/templates/{template_uuid}/favorite": {
+      "post": {
+        "tags": [
+          "template"
+        ],
+        "summary": "Add template to favorites",
+        "description": "Marks a template as favorite for the current user.\nOnly templates owned by the user or global templates can be favorited.\nThis operation is idempotent.",
+        "operationId": "handle_add_template_to_favorites",
+        "parameters": [
+          {
+            "name": "template_uuid",
+            "in": "path",
+            "description": "Template UUID to favorite",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Template added to favorites",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FavoriteResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/JsonErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Template not found or access denied",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/JsonErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "oauth2_token": []
+          }
+        ]
+      },
+      "delete": {
+        "tags": [
+          "template"
+        ],
+        "summary": "Remove template from favorites",
+        "description": "Removes a template from the current user's favorites.\nThis operation is idempotent.",
+        "operationId": "handle_remove_template_from_favorites",
+        "parameters": [
+          {
+            "name": "template_uuid",
+            "in": "path",
+            "description": "Template UUID to unfavorite",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Template removed from favorites",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FavoriteResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
             "content": {
               "application/json": {
                 "schema": {
@@ -1521,6 +1957,18 @@
             }
           }
         ]
+      },
+      "FavoriteResponse": {
+        "type": "object",
+        "description": "Response for favorite operations",
+        "required": [
+          "message"
+        ],
+        "properties": {
+          "message": {
+            "type": "string"
+          }
+        }
       },
       "HealthInfo": {
         "type": "object",
@@ -1864,6 +2312,21 @@
           }
         }
       },
+      "SectionListResponse": {
+        "type": "object",
+        "description": "Response containing a list of sections",
+        "required": [
+          "sections"
+        ],
+        "properties": {
+          "sections": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Section"
+            }
+          }
+        }
+      },
       "SectionResponse": {
         "type": "object",
         "description": "Response containing section data",
@@ -2137,6 +2600,7 @@
           "session_uuid",
           "bullet_points",
           "is_blocked",
+          "display_order",
           "updated_at"
         ],
         "properties": {
@@ -2151,6 +2615,10 @@
               "Pain level: 7/10",
               "No previous history of migraines"
             ]
+          },
+          "display_order": {
+            "type": "integer",
+            "format": "int32"
           },
           "is_blocked": {
             "type": "boolean",
@@ -2415,6 +2883,94 @@
           }
         }
       },
+      "TemplateCreateRequest": {
+        "type": "object",
+        "description": "Request body for creating a new template",
+        "required": [
+          "name",
+          "sections"
+        ],
+        "properties": {
+          "name": {
+            "type": "string",
+            "description": "Name of the template"
+          },
+          "sections": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/TemplateSectionInput"
+            },
+            "description": "Sections to include in the template with their display order"
+          }
+        }
+      },
+      "TemplateCreateResponse": {
+        "type": "object",
+        "description": "Response after creating a template",
+        "required": [
+          "template_uuid"
+        ],
+        "properties": {
+          "template_uuid": {
+            "type": "string",
+            "format": "uuid"
+          }
+        }
+      },
+      "TemplateDeleteResponse": {
+        "type": "object",
+        "description": "Response after deleting a template",
+        "required": [
+          "message"
+        ],
+        "properties": {
+          "message": {
+            "type": "string"
+          }
+        }
+      },
+      "TemplateDetailResponse": {
+        "type": "object",
+        "description": "Detailed template response with sections (no user_uuid)",
+        "required": [
+          "uuid",
+          "template_name",
+          "created_at",
+          "updated_at",
+          "is_owner",
+          "is_favorite",
+          "sections"
+        ],
+        "properties": {
+          "created_at": {
+            "type": "string",
+            "format": "date"
+          },
+          "is_favorite": {
+            "type": "boolean"
+          },
+          "is_owner": {
+            "type": "boolean"
+          },
+          "sections": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/TemplateSectionInfo"
+            }
+          },
+          "template_name": {
+            "type": "string"
+          },
+          "updated_at": {
+            "type": "string",
+            "format": "date"
+          },
+          "uuid": {
+            "type": "string",
+            "format": "uuid"
+          }
+        }
+      },
       "TemplateError": {
         "oneOf": [
           {
@@ -2428,24 +2984,51 @@
                 "format": "uuid"
               }
             }
+          },
+          {
+            "type": "string",
+            "enum": [
+              "InvalidSections"
+            ]
           }
         ]
       },
-      "TemplateInfo": {
+      "TemplateInfoListResponse": {
         "type": "object",
-        "description": "Session template information\n\nTemplates define a predefined set of sections for interview sessions.",
+        "description": "Response containing a list of lightweight template info",
+        "required": [
+          "templates"
+        ],
+        "properties": {
+          "templates": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/TemplateInfoResponse"
+            }
+          }
+        }
+      },
+      "TemplateInfoResponse": {
+        "type": "object",
+        "description": "Lightweight template info for list endpoint (no sections, no user_uuid)",
         "required": [
           "uuid",
           "template_name",
-          "user_uuid",
           "created_at",
-          "updated_at"
+          "updated_at",
+          "is_owner",
+          "is_favorite"
         ],
         "properties": {
           "created_at": {
             "type": "string",
-            "format": "date",
-            "description": "Timestamp when the template was created (RFC 3339 format)"
+            "format": "date"
+          },
+          "is_favorite": {
+            "type": "boolean"
+          },
+          "is_owner": {
+            "type": "boolean"
           },
           "template_name": {
             "type": "string",
@@ -2457,33 +3040,99 @@
             "format": "date",
             "description": "Timestamp when the template was last updated (RFC 3339 format)"
           },
-          "user_uuid": {
-            "type": "string",
-            "format": "uuid",
-            "description": "UUID of the user who created this template (superuser for global templates)",
-            "example": "550e8400-e29b-41d4-a716-446655440000"
-          },
           "uuid": {
             "type": "string",
-            "format": "uuid",
-            "description": "Unique identifier for the template",
-            "example": "850e8400-e29b-41d4-a716-446655440003"
+            "format": "uuid"
           }
         }
       },
-      "TemplateListResponse": {
+      "TemplateSectionInfo": {
         "type": "object",
-        "description": "Response containing a list of available templates",
+        "description": "Section info for template detail response",
         "required": [
-          "templates"
+          "uuid",
+          "title",
+          "description",
+          "section_type",
+          "display_order",
+          "created_at"
         ],
         "properties": {
-          "templates": {
-            "type": "array",
+          "created_at": {
+            "type": "string",
+            "format": "date"
+          },
+          "description": {
+            "type": "string"
+          },
+          "display_order": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "section_type": {
+            "$ref": "#/components/schemas/SectionType"
+          },
+          "title": {
+            "type": "string"
+          },
+          "uuid": {
+            "type": "string",
+            "format": "uuid"
+          }
+        }
+      },
+      "TemplateSectionInput": {
+        "type": "object",
+        "description": "Section with display order for template creation/update",
+        "required": [
+          "section_uuid",
+          "display_order"
+        ],
+        "properties": {
+          "display_order": {
+            "type": "integer",
+            "format": "int32",
+            "description": "Display order of the section within the template (0-indexed)"
+          },
+          "section_uuid": {
+            "type": "string",
+            "format": "uuid",
+            "description": "UUID of the section to add to template"
+          }
+        }
+      },
+      "TemplateUpdateRequest": {
+        "type": "object",
+        "description": "Request body for updating an existing template",
+        "properties": {
+          "name": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "New name of the template (optional)"
+          },
+          "sections": {
+            "type": [
+              "array",
+              "null"
+            ],
             "items": {
-              "$ref": "#/components/schemas/TemplateInfo"
+              "$ref": "#/components/schemas/TemplateSectionInput"
             },
-            "description": "Array of template information objects"
+            "description": "Updated sections with their display order (replaces all existing sections)"
+          }
+        }
+      },
+      "TemplateUpdateResponse": {
+        "type": "object",
+        "description": "Response after updating a template",
+        "required": [
+          "message"
+        ],
+        "properties": {
+          "message": {
+            "type": "string"
           }
         }
       },
