@@ -2767,6 +2767,7 @@
           },
           {
             "type": "string",
+            "description": "User attempted to modify a section owned by another user.\nMaps to 404 instead of 403 to avoid leaking information about\nwhich sections exist but belong to other users.",
             "enum": [
               "NotOwner"
             ]
