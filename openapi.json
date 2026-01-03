@@ -293,7 +293,24 @@
         "tags": [
           "section"
         ],
+        "summary": "Get all accessible sections",
+        "description": "Returns all sections accessible to the current user (user's own sections + superuser/global sections).\nSupports optional filtering by section name using case-insensitive partial matching.\n\n**Sections returned:**\n- Sections owned by the current user\n- Global sections owned by the superuser (read-only, must clone to modify)\n\n**Ordering:**\n- Superuser sections first, then user's own sections\n- Within each group, sorted alphabetically by title",
         "operationId": "handle_get_all_sections",
+        "parameters": [
+          {
+            "name": "filter",
+            "in": "query",
+            "description": "Optional filter for section name (case-insensitive partial match)",
+            "required": false,
+            "schema": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "example": "Chief"
+          }
+        ],
         "responses": {
           "200": {
             "description": "Sections retrieved successfully",
@@ -375,6 +392,225 @@
           },
           "401": {
             "description": "Unauthorized - invalid or missing JWT token",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/JsonErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "oauth2_token": []
+          }
+        ]
+      }
+    },
+    "/sections/{section_uuid}": {
+      "put": {
+        "tags": [
+          "section"
+        ],
+        "summary": "Update a section",
+        "description": "Updates an existing section. Only sections owned by the current user can be updated.\nSuperuser/global sections are read-only and must be cloned first to make modifications.\n\n**Authorization:**\n- User must own the section\n- Superuser sections return 403 Forbidden (clone first to modify)",
+        "operationId": "handle_update_section",
+        "parameters": [
+          {
+            "name": "section_uuid",
+            "in": "path",
+            "description": "UUID of the section to update",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "description": "Fields to update (all optional)",
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SectionUpdateRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Section updated successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SectionUpdateResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Validation failed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/JsonErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/JsonErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Cannot modify superuser section or not owner",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/JsonErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Section not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/JsonErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "oauth2_token": []
+          }
+        ]
+      },
+      "delete": {
+        "tags": [
+          "section"
+        ],
+        "summary": "Delete a section",
+        "description": "Deletes an existing section. Only sections owned by the current user can be deleted.\nSuperuser/global sections cannot be deleted.\n\n**Authorization:**\n- User must own the section\n- Superuser sections return 403 Forbidden",
+        "operationId": "handle_delete_section",
+        "parameters": [
+          {
+            "name": "section_uuid",
+            "in": "path",
+            "description": "UUID of the section to delete",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Section deleted successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SectionDeleteResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/JsonErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Cannot delete superuser section or not owner",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/JsonErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Section not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/JsonErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "oauth2_token": []
+          }
+        ]
+      }
+    },
+    "/sections/{section_uuid}/clone": {
+      "post": {
+        "tags": [
+          "section"
+        ],
+        "summary": "Clone a section",
+        "description": "Creates an independent copy of an existing section. The cloned section is owned by\nthe requesting user and can be freely modified. This is the recommended way to\ncustomize superuser/global sections.\n\n**Use cases:**\n- Clone a superuser section to create a customizable copy\n- Duplicate one of your own sections as a starting point\n\n**Behavior:**\n- Creates a new section with the same title, description, and type\n- The new section is owned by the requesting user\n- No reference to the original section is maintained (independent copy)",
+        "operationId": "handle_clone_section",
+        "parameters": [
+          {
+            "name": "section_uuid",
+            "in": "path",
+            "description": "UUID of the section to clone",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "Section cloned successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SectionCloneResponse"
+                },
+                "example": {
+                  "section_uuid": "850e8400-e29b-41d4-a716-446655440003"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/JsonErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Section not found or not accessible",
             "content": {
               "application/json": {
                 "schema": {
@@ -1754,6 +1990,175 @@
         ]
       }
     },
+    "/templates/{template_uuid}/sections": {
+      "post": {
+        "tags": [
+          "template"
+        ],
+        "summary": "Add a section to a template",
+        "description": "Adds an existing section to a template. The section is added at the end of the template\nwith an automatically assigned display_order (max existing + 1).\n\n**Authorization:**\n- User must own the template\n\n**Validations:**\n- Section must exist\n- Section cannot already be in the template (no duplicates)",
+        "operationId": "handle_add_section_to_template",
+        "parameters": [
+          {
+            "name": "template_uuid",
+            "in": "path",
+            "description": "Template UUID to add section to",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "description": "Section to add to the template",
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TemplateSectionAddRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "Section added to template successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TemplateSectionAddResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/JsonErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "User does not own the template",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/JsonErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Template or section not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/JsonErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Section is already in the template",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/JsonErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "oauth2_token": []
+          }
+        ]
+      }
+    },
+    "/templates/{template_uuid}/sections/{section_uuid}": {
+      "delete": {
+        "tags": [
+          "template"
+        ],
+        "summary": "Remove a section from a template",
+        "description": "Removes the association between a section and a template. This does NOT delete the section\nitself - only breaks the association.\n\n**Authorization:**\n- User must own the template",
+        "operationId": "handle_remove_section_from_template",
+        "parameters": [
+          {
+            "name": "template_uuid",
+            "in": "path",
+            "description": "Template UUID",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "section_uuid",
+            "in": "path",
+            "description": "Section UUID to remove from template",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Section removed from template successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TemplateSectionRemoveResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/JsonErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "User does not own the template",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/JsonErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Template not found or section not in template",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/JsonErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "oauth2_token": []
+          }
+        ]
+      }
+    },
     "/users/me": {
       "get": {
         "tags": [
@@ -2272,6 +2677,21 @@
           }
         }
       },
+      "SectionCloneResponse": {
+        "type": "object",
+        "description": "Response after successfully cloning a section",
+        "required": [
+          "section_uuid"
+        ],
+        "properties": {
+          "section_uuid": {
+            "type": "string",
+            "format": "uuid",
+            "description": "UUID of the newly cloned section",
+            "example": "850e8400-e29b-41d4-a716-446655440003"
+          }
+        }
+      },
       "SectionCreateRequest": {
         "type": "object",
         "description": "Request body for creating a new section\n\nCreates a custom section that can be reused across multiple sessions.",
@@ -2312,6 +2732,47 @@
           }
         }
       },
+      "SectionDeleteResponse": {
+        "type": "object",
+        "description": "Response after successfully deleting a section",
+        "required": [
+          "message"
+        ],
+        "properties": {
+          "message": {
+            "type": "string",
+            "description": "Success message"
+          }
+        }
+      },
+      "SectionError": {
+        "oneOf": [
+          {
+            "type": "object",
+            "required": [
+              "NotFound"
+            ],
+            "properties": {
+              "NotFound": {
+                "type": "string",
+                "format": "uuid"
+              }
+            }
+          },
+          {
+            "type": "string",
+            "enum": [
+              "SuperuserSectionReadOnly"
+            ]
+          },
+          {
+            "type": "string",
+            "enum": [
+              "NotOwner"
+            ]
+          }
+        ]
+      },
       "SectionListResponse": {
         "type": "object",
         "description": "Response containing a list of sections",
@@ -2347,6 +2808,52 @@
           "history_taking",
           "physical_examination"
         ]
+      },
+      "SectionUpdateRequest": {
+        "type": "object",
+        "description": "Request body for updating a section",
+        "properties": {
+          "description": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "New description of what this section is for (optional)",
+            "example": "Updated description for documenting patient's primary reason for visit"
+          },
+          "name": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "New name/title of the section (optional)",
+            "example": "Updated Chief Complaint"
+          },
+          "section_type": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/SectionType",
+                "description": "New type of section (optional)"
+              }
+            ]
+          }
+        }
+      },
+      "SectionUpdateResponse": {
+        "type": "object",
+        "description": "Response after successfully updating a section",
+        "required": [
+          "message"
+        ],
+        "properties": {
+          "message": {
+            "type": "string",
+            "description": "Success message"
+          }
+        }
       },
       "Session": {
         "type": "object",
@@ -2990,6 +3497,48 @@
             "enum": [
               "InvalidSections"
             ]
+          },
+          {
+            "type": "object",
+            "required": [
+              "SectionNotFound"
+            ],
+            "properties": {
+              "SectionNotFound": {
+                "type": "string",
+                "format": "uuid"
+              }
+            }
+          },
+          {
+            "type": "object",
+            "required": [
+              "SectionAlreadyInTemplate"
+            ],
+            "properties": {
+              "SectionAlreadyInTemplate": {
+                "type": "string",
+                "format": "uuid"
+              }
+            }
+          },
+          {
+            "type": "object",
+            "required": [
+              "SectionNotInTemplate"
+            ],
+            "properties": {
+              "SectionNotInTemplate": {
+                "type": "string",
+                "format": "uuid"
+              }
+            }
+          },
+          {
+            "type": "string",
+            "enum": [
+              "NotOwner"
+            ]
           }
         ]
       },
@@ -3046,6 +3595,39 @@
           }
         }
       },
+      "TemplateSectionAddRequest": {
+        "type": "object",
+        "description": "Request body for adding a section to a template",
+        "required": [
+          "section_uuid"
+        ],
+        "properties": {
+          "section_uuid": {
+            "type": "string",
+            "format": "uuid",
+            "description": "UUID of the section to add to the template"
+          }
+        }
+      },
+      "TemplateSectionAddResponse": {
+        "type": "object",
+        "description": "Response after adding a section to a template",
+        "required": [
+          "message",
+          "display_order"
+        ],
+        "properties": {
+          "display_order": {
+            "type": "integer",
+            "format": "int32",
+            "description": "The display order assigned to the added section"
+          },
+          "message": {
+            "type": "string",
+            "description": "Success message"
+          }
+        }
+      },
       "TemplateSectionInfo": {
         "type": "object",
         "description": "Section info for template detail response",
@@ -3098,6 +3680,19 @@
             "type": "string",
             "format": "uuid",
             "description": "UUID of the section to add to template"
+          }
+        }
+      },
+      "TemplateSectionRemoveResponse": {
+        "type": "object",
+        "description": "Response after removing a section from a template",
+        "required": [
+          "message"
+        ],
+        "properties": {
+          "message": {
+            "type": "string",
+            "description": "Success message"
           }
         }
       },
